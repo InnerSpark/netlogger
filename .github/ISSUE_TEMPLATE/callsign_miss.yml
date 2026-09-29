@@ -1,0 +1,17 @@
+name: Missed or wrong callsign
+description: The transcript was right but the callsign came out wrong or missing
+labels: [parser]
+body:
+  - type: input
+    id: heard
+    attributes:
+      label: Text from Last heard
+      description: Copy the exact line from the Last heard card.
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Callsign it should have found
+    validations:
+      required: true

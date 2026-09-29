@@ -1,0 +1,16 @@
+services:
+  netlogger:
+    build: .
+    # Or skip the build and use the published image:
+    # image: ghcr.io/innerspark/netlogger:latest
+    container_name: netlogger
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "34001:34001/udp"   # audio from your AllStar node
+      - "8080:8080"         # dashboard
+    volumes:
+      - netlogger-data:/data   # database and Whisper model
+
+volumes:
+  netlogger-data:

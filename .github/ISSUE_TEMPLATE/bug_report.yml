@@ -1,0 +1,27 @@
+name: Bug report
+description: Something doesn't work right
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output of `docker compose logs --tail 100`. Remove your AMI secret and any private info.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown at the top of the logs, e.g. "Net Logger 1.0.0".
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: Host OS and hardware, AllStar version (e.g. ASL3), Whisper model.
