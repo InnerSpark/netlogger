@@ -47,13 +47,18 @@ class Handler(BaseHTTPRequestHandler):
         for k, v in {**SECURITY_HEADERS, **(headers or {})}.items():
             self.send_header(k, v)
         self.end_headers()
-        self.wfile.write(data)
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def token(self):
         c = SimpleCookie(self.headers.get("Cookie", ""))
         return c["nl_session"].value if "nl_session" in c else None
 
     def client(self):
+        if config.TRUST_PROXY and config.CLIENT_IP_HEADER:
+            ip = self.headers.get(config.CLIENT_IP_HEADER, "").strip()
+            if ip:
+                return ip
         if config.TRUST_PROXY:
             # The proxy appends the real client address last; earlier entries can be spoofed
             fwd = [a.strip() for a in self.headers.get("X-Forwarded-For", "").split(",") if a.strip()]
@@ -81,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
     def route(self, method):
         path = self.path.split("?", 1)[0]
         try:
-            if method == "GET" and not path.startswith("/api/"):
+            if method == "GET" and not path.startswith("/api/"):  # HEAD comes through as GET
                 return self.static(path)
             for m, pattern, fn in ROUTES:
                 if m == method:
@@ -96,6 +101,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": "Something went wrong on the logger. Check its logs."})
 
     def do_GET(self):
+        self.route("GET")
+
+    def do_HEAD(self):
         self.route("GET")
 
     def do_POST(self):

@@ -26,6 +26,7 @@ LOGGER_NODE=""
 DEFAULT_NODE=""
 MODEL=""
 ASSUME_YES=0
+FORCE=0
 RESTART=ask
 CONFIG_ONLY=0   # testing: only the Asterisk config part
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,6 +41,7 @@ Usage: sudo ./install.sh [options]
   --no-restart        Never restart Asterisk (do it yourself later)
   --asterisk-dir DIR  Asterisk config dir (default: /etc/asterisk)
   --config-only       Only add the Asterisk config (for testing)
+  --force             Install even with under 1 GB of free memory (can starve Asterisk)
 EOF
 }
 
@@ -52,6 +54,7 @@ while [ $# -gt 0 ]; do
     --no-restart) RESTART=no; shift ;;
     --asterisk-dir) AST="$2"; shift 2 ;;
     --config-only) CONFIG_ONLY=1; shift ;;
+    --force) FORCE=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1"; usage; exit 1 ;;
   esac
@@ -66,7 +69,8 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 backup() {  # backup FILE, once per run
   local f="$1"
   [ -f "$f" ] || return 0
-  [ -f "$f.netlogger-bak-$STAMP" ] || cp -p "$f" "$f.netlogger-bak-$STAMP"
+  [ -f "$f.netlogger-bak-$STAMP" ] && return 0
+  cp -p "$f" "$f.netlogger-bak-$STAMP"
   ok "backed up $(basename "$f") -> $(basename "$f").netlogger-bak-$STAMP"
 }
 
@@ -82,6 +86,13 @@ if [ "$CONFIG_ONLY" = 0 ]; then
   [ "$(id -u)" = 0 ] || die "Run with sudo."
   [ -f /etc/debian_version ] || die "This installer is for Debian (ASL3). For other systems, use Docker (see README)."
   command -v asterisk >/dev/null || die "Asterisk isn't installed. Install ASL3 first, or run Net Logger on another computer with Docker."
+  # Speech to text on a tiny server can run it out of memory, and Linux may kill Asterisk to recover
+  FREE_MB="$(awk '/MemAvailable/{printf "%d", $2/1024}' /proc/meminfo)"
+  if [ "$FREE_MB" -lt 1024 ] && [ "$FORCE" = 0 ]; then
+    die "Only ${FREE_MB} MB of memory free. Speech to text needs at least 1 GB, or it can take your node down.
+       Resize the server (2 CPU / 4 GB works well), or run Net Logger on another computer (docs/allstar-setup.md).
+       To install anyway: sudo ./install.sh --force"
+  fi
 fi
 [ -f "$AST/rpt.conf" ] || die "Can't find $AST/rpt.conf."
 [ -f "$AST/manager.conf" ] || die "Can't find $AST/manager.conf."
@@ -261,6 +272,8 @@ DEFAULT_NODE=$DEFAULT_NODE
 AUTO_CONNECT=0
 # Set both to 1 once the dashboard is behind HTTPS on a subdomain
 TRUST_PROXY=1
+# Behind Cloudflare: CF-Connecting-IP
+CLIENT_IP_HEADER=
 COOKIE_SECURE=1
 SESSION_DAYS=30
 EOF

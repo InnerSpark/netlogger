@@ -47,13 +47,39 @@ The dashboard listens on `127.0.0.1:8080` only. Point a DNS record (for example 
 
 ### Apache (common with Supermon)
 
-```
-sudo a2enmod proxy proxy_http headers
-```
-
-Create `/etc/apache2/sites-available/netlog.conf`:
+**Check this first, or you can knock Supermon offline.** See which sites Apache already has:
 
 ```
+sudo apache2ctl -S
+```
+
+If it shows **no** sites for `*:80` (Apache serves everything from its main config), then the first site you add takes over **all** traffic on port 80, Supermon included. Give your existing site its own named entry first, then add the logger.
+
+**Supermon-NG** ships an Apache file at `/etc/apache2/sites-available/supermon-ng.conf` that's often never turned on (you'll see an "Index of /" page at your domain). Turn it on as the default site:
+
+```
+sudo cp /etc/apache2/sites-available/supermon-ng.conf /etc/apache2/sites-available/010-supermon-ng.conf
+sudo sed -i '0,/<VirtualHost \*:80>/s//<VirtualHost *:80>\n    ServerName node.example.com/' /etc/apache2/sites-available/010-supermon-ng.conf
+sudo a2enmod rewrite proxy proxy_http proxy_wstunnel headers
+sudo a2ensite 010-supermon-ng
+```
+
+Optional: send the bare domain to Supermon and stop Apache listing your files:
+
+```
+sudo tee /etc/apache2/conf-available/supermon-home.conf >/dev/null <<'EOF2'
+RedirectMatch 302 ^/$ /supermon-ng/
+<Directory /var/www/html>
+    Options -Indexes
+</Directory>
+EOF2
+sudo a2enconf supermon-home
+```
+
+Now add the logger. The `020-` name keeps it after your default site:
+
+```
+sudo tee /etc/apache2/sites-available/020-netlog.conf >/dev/null <<'EOF2'
 <VirtualHost *:80>
     ServerName netlog.example.com
     ProxyPreserveHost On
@@ -61,16 +87,17 @@ Create `/etc/apache2/sites-available/netlog.conf`:
     ProxyPassReverse / http://127.0.0.1:8080/
     RequestHeader set X-Forwarded-Proto "https"
 </VirtualHost>
+EOF2
+sudo a2ensite 020-netlog
+sudo apache2ctl configtest && sudo systemctl reload apache2
+sudo apache2ctl -S
 ```
 
-```
-sudo a2ensite netlog
-sudo systemctl reload apache2
-sudo apt install -y certbot python3-certbot-apache
-sudo certbot --apache -d netlog.example.com
-```
+`-S` should list your main site as the **default server** and the logger as a **namevhost**.
 
-Certbot adds the HTTPS site and renews the certificate on its own.
+**HTTPS:**
+- **Behind Cloudflare** (orange cloud): Cloudflare handles HTTPS. Add a proxied A record for the subdomain. With **Flexible** mode, Cloudflare talks to Apache on port 80, which is what the site above listens on. Also set `CLIENT_IP_HEADER=CF-Connecting-IP` in `/etc/netlogger/netlogger.env` and restart, so login throttling sees each visitor instead of Cloudflare.
+- **Without Cloudflare:** `sudo apt install -y certbot python3-certbot-apache && sudo certbot --apache -d netlog.example.com`
 
 ### nginx
 
