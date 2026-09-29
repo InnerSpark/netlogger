@@ -4,6 +4,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+- Audio cleanup before speech to text: removes DC and low rumble, levels quiet signals.
+- Whisper prompt includes the phonetic alphabet and calls this logger has seen, so it leans toward them.
+- `KNOWN_CALLS` setting for net regulars and net control.
+- Clipped or garbled calls snap to a known call when only one fits (W6U -> W6UXD, "five K G X" -> KE5KGX).
+- Last heard shows calls not yet on the roster with a one-tap Add button.
+- `SAVE_AUDIO` keeps recent transmissions as WAV files, and `tools/tune.py` compares Whisper models on them.
+
+### Fixed
+- Parser handles possessives ("Six's"), "Whisky", "ex-ray", "fife", "tree", "niner".
+
 ## [1.0.0] - 2026-10-02
 
 ### Added

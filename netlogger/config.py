@@ -23,6 +23,10 @@ WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small.en")
 WHISPER_THREADS = _int("WHISPER_THREADS", 0)  # 0 = all cores; cap it on a shared server
 MIN_SECONDS = float(os.environ.get("MIN_SECONDS", 0.8))
 CALL_LOOKUP = _bool("CALL_LOOKUP", True)
+# Calls to expect (net regulars, NCS), comma separated. Helps speech to text and fixes clipped calls.
+KNOWN_CALLS = [c.strip().upper() for c in os.environ.get("KNOWN_CALLS", "").split(",") if c.strip()]
+# Keep the last N transmissions as WAV files in DATA_DIR/audio for tuning (0 = off)
+SAVE_AUDIO = _int("SAVE_AUDIO", 0)
 FAKE_TRANSCRIPTS = os.environ.get("NETLOG_FAKE_TRANSCRIPTS")  # testing only
 
 # AllStar node control over the Asterisk Manager Interface. Off when AMI_HOST is blank.

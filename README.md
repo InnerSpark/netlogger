@@ -127,7 +127,8 @@ Start with the **Setup** page in the app. Its status checklist shows whether aud
 
 **Calls come out wrong**
 - Read the raw text in **Last heard**. If Whisper heard it right but the call is wrong, it's a parser bug: please open an issue with the line.
-- If Whisper heard it wrong, try a bigger model: `WHISPER_MODEL=medium.en`.
+- If Whisper heard it wrong, try a bigger model (`small.en`, then `medium.en`), and list your regulars in `KNOWN_CALLS`.
+- To tune on real audio: set `SAVE_AUDIO=50`, let it hear some transmissions, then run `tools/tune.py base.en small.en` to compare models side by side.
 
 **Names and class are blank:** callook.info is unreachable, or the call isn't a US call. Check-ins still log. **Fix call** with the same call retries the lookup.
 

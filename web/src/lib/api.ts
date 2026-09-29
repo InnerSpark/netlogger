@@ -33,7 +33,7 @@ export type Checkin = {
   id: number; call: string; name: string; location: string; class: string;
   valid: number | null; first_time: number; flags: string; recheck_done: number;
 };
-export type NetState = { net: Net | null; checkins: Checkin[]; heard: { ts: number; text: string }[] };
+export type NetState = { net: Net | null; checkins: Checkin[]; heard: { ts: number; text: string; calls: string | null }[] };
 export type Link = { node: string; direction: string; connected_for: string; state: string };
 export type NodeState = { enabled: boolean; logger_node: string; default_node: string; links: Link[]; error: string | null };
 export type SetupState = {

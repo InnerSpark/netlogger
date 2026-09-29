@@ -55,3 +55,13 @@ def test_head_requests(client):
     r = urllib.request.Request(client.base + "/", method="HEAD")
     with urllib.request.urlopen(r) as resp:
         assert resp.status == 200 and resp.read() == b""
+
+
+def test_clipped_call_snaps_to_known(admin, monkeypatch):
+    from netlogger import config
+    monkeypatch.setattr(config, "KNOWN_CALLS", ["W6UXD"])
+    admin.post("/api/net/open", {"name": "Test"})
+    netlog.log_text("This is W6U, it's the testing room.", 2.0)
+    s = admin.get("/api/state")[1]
+    assert [c["call"] for c in s["checkins"]] == ["W6UXD"]
+    assert s["heard"][0]["calls"] == "W6UXD"

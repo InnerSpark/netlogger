@@ -212,7 +212,7 @@ def state(h):
     h.user()
     net = netlog.current_or_last_net()
     rows = db.q("SELECT * FROM checkins WHERE net_id=? ORDER BY ts", (net["id"],)) if net else []
-    heard = db.q("SELECT ts, text FROM transmissions ORDER BY id DESC LIMIT 8")
+    heard = db.q("SELECT ts, text, calls FROM transmissions ORDER BY id DESC LIMIT 8")
     h.send(200, {"net": net, "checkins": rows, "heard": heard})
 
 
