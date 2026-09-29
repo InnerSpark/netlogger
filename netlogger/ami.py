@@ -54,8 +54,11 @@ def command(cmd: str) -> str:
             out = []
             first = _read_message(f)
             if any(l.lower() == "response: error" for l in first):
-                raise AMIError(next((l.split(":", 1)[1].strip() for l in first if l.lower().startswith("message:")),
-                                    "Command failed."))
+                output = " ".join(l.split(":", 1)[1].strip() for l in first if l.startswith("Output:"))
+                if "No such command" in output:
+                    raise AMIError("The AllStar server doesn't know 'rpt' commands. Is app_rpt (ASL3) running?")
+                raise AMIError(output or next((l.split(":", 1)[1].strip() for l in first
+                                                if l.lower().startswith("message:")), "Command failed."))
             if any(l.lower() == "response: follows" for l in first):
                 # Older Asterisk: raw output ending in --END COMMAND--, usually all in one message
                 done = False

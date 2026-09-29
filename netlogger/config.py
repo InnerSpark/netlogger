@@ -20,6 +20,7 @@ HTTP_PORT = _int("HTTP_PORT", 8080)
 USRP_PORT = _int("USRP_PORT", 34001)
 
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small.en")
+WHISPER_THREADS = _int("WHISPER_THREADS", 0)  # 0 = all cores; cap it on a shared server
 MIN_SECONDS = float(os.environ.get("MIN_SECONDS", 0.8))
 CALL_LOOKUP = _bool("CALL_LOOKUP", True)
 FAKE_TRANSCRIPTS = os.environ.get("NETLOG_FAKE_TRANSCRIPTS")  # testing only
@@ -33,8 +34,14 @@ LOGGER_NODE = os.environ.get("LOGGER_NODE", "1999").strip()
 DEFAULT_NODE = os.environ.get("DEFAULT_NODE", "").strip()
 AUTO_CONNECT = _bool("AUTO_CONNECT", False)
 
+# Set to 1 when a reverse proxy (Apache, nginx, Caddy) sits in front. The client IP is then
+# read from X-Forwarded-For, so login throttling applies per person, not to the proxy.
+TRUST_PROXY = _bool("TRUST_PROXY", False)
+
 # Accounts
 COOKIE_SECURE = _bool("COOKIE_SECURE", False)  # set when serving over HTTPS
 SESSION_DAYS = _int("SESSION_DAYS", 30)
 
 NODE_CONTROL = bool(AMI_HOST and AMI_USER and AMI_SECRET)
+# Running on the AllStar server itself (install.sh)
+SAME_HOST = AMI_HOST in ("127.0.0.1", "localhost", "::1")

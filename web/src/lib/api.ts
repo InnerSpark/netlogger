@@ -40,7 +40,7 @@ export type SetupState = {
   version: string; whisper_model: string; transcriber: "starting" | "loading" | "ready";
   last_packet: number | null; last_transmission: number | null;
   usrp_port: number; http_port: number; logger_node: string; default_node: string;
-  ami_host: string; ami_port: number; ami_user: string;
+  ami_host: string; ami_port: number; ami_user: string; same_host: boolean;
   node: { configured: boolean; reachable: boolean | null; error: string | null; links: Link[] };
   call_lookup: boolean; cookie_secure: boolean;
 };

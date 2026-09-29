@@ -1,0 +1,27 @@
+name: Release
+
+# On a version tag, attach a prebuilt dashboard so install.sh doesn't need Node
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  web-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: web
+      - run: tar -C web/dist -czf web-dist.tgz .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: web-dist.tgz
+          generate_release_notes: true

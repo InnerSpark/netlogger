@@ -17,6 +17,7 @@ class FakeAMI(socketserver.ThreadingTCPServer):
 
     def __init__(self, secret="s3cret", new_style=True):
         self.secret, self.new_style, self.links, self.commands = secret, new_style, [], []
+        self.no_app_rpt = False
         super().__init__(("127.0.0.1", 0), FakeAMIHandler)
 
 
@@ -53,6 +54,9 @@ class FakeAMIHandler(socketserver.StreamRequestHandler):
                 srv.commands.append(cmd)
                 parts = cmd.split()
                 out = []
+                if srv.no_app_rpt and parts[0] == "rpt":
+                    self.send(f"Response: Error\r\nMessage: Command output follows\r\nOutput: No such command '{cmd}' (type 'core show help {cmd}' for other possible commands)\r\n\r\n")
+                    continue
                 if parts[:2] == ["rpt", "lstats"]:
                     out = ["NODE      PEER                RECONNECTS  DIRECTION  CONNECT TIME        CONNECT STATE",
                            "----      ----                ----------  ---------  ------------        -------------"]

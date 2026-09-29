@@ -67,3 +67,21 @@ def test_change_own_password(admin, server):
     assert admin.get("/api/state")[0] == 200  # this session stays
     c = Client(server)
     assert c.post("/api/auth/login", {"username": "ncs", "password": "another good one"})[0] == 200
+
+
+def test_throttle_per_client_behind_proxy(admin, server, monkeypatch):
+    from netlogger import config
+    import json, urllib.request
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+
+    def login(ip, pw):
+        r = urllib.request.Request(server + "/api/auth/login", method="POST",
+                                   data=json.dumps({"username": "ncs", "password": pw}).encode(),
+                                   headers={"Content-Type": "application/json", "X-Forwarded-For": f"9.9.9.9, {ip}"})
+        try:
+            return urllib.request.urlopen(r).status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    assert [login("203.0.113.5", "wrong password!") for _ in range(6)][-1] == 429
+    assert login("198.51.100.7", "correct horse") == 200  # someone else isn't locked out
