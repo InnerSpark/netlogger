@@ -11,18 +11,53 @@ from . import config
 from .netlog import log_text
 
 USRP_HDR = struct.Struct(">4sIIIIIII")  # eye, seq, memory, keyup, talkgroup, type, mpxid, reserved
-PHONETICS = ("Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliet Kilo Lima Mike November "
-             "Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu")
+PROMPT_BASE = "Ham radio net check-ins with callsigns in phonetics, like Kilo Five Alpha Bravo Charlie."
+# Stock phrases Whisper invents for silence and noise (it learned them from video captions)
+HALLUCINATIONS = ("thanks for watching", "thank you for watching", "new videos every week", "subscribe",
+                  "like and subscribe", "see you next time", "see you in the next video", "subtitles by",
+                  "transcribed by", "pfft")
+# Words that only show up if Whisper is parroting the prompt back
+ECHO_WORDS = {"regulars", "phonetics", "callsigns", "ham", "like"}
 
 
 def prompt():
     """Nudge Whisper toward ham radio talk and the calls this net usually hears."""
     from .netlog import known_calls
     calls = known_calls(limit=25)
-    p = f"Amateur radio net check-ins, callsigns in phonetics: {PHONETICS}. Niner."
-    if calls:
-        p += " Stations: " + ", ".join(calls) + "."
-    return p
+    return PROMPT_BASE + (" Regulars: " + ", ".join(calls) + "." if calls else "")
+
+
+def keep_text(segments, prompt_text):
+    """Join Whisper segments, dropping the ones that aren't real speech.
+
+    On noise, tones or CW IDs Whisper tends to invent text or repeat its prompt.
+    Skip segments it marks as probably silent, low-confidence or looping, then
+    drop the whole thing if what's left is just the prompt read back.
+    """
+    import re
+    kept = []
+    for seg in segments:
+        if seg.no_speech_prob > 0.6 and seg.avg_logprob < -0.5:
+            continue  # probably not speech
+        if seg.avg_logprob < -1.2 or seg.compression_ratio > 2.4:
+            continue  # low confidence, or stuck repeating itself
+        kept.append(seg.text.strip())
+    # cut stock phrases out rather than dropping the segment, in case a real call shares it
+    for h in HALLUCINATIONS:
+        kept = [re.sub(re.escape(h) + r"[\s!.,]*", "", t, flags=re.I).strip() for t in kept]
+    text = " ".join(kept).strip()
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    if not words:
+        return ""
+    prompt_words = set(re.findall(r"[a-z0-9]+", prompt_text.lower()))
+    echoed = sum(w in ECHO_WORDS for w in words)
+    if echoed >= 2 or (echoed and all(w in prompt_words for w in words)):
+        return ""
+    # the same short sentence over and over ("Niner. Stations. Niner.")
+    sentences = [x.strip().lower() for x in re.split(r"[.!?]+", text) if x.strip()]
+    if len(sentences) >= 3 and len(set(sentences)) <= len(sentences) // 2:
+        return ""
+    return text
 
 
 def clean(pcm8k):
@@ -77,9 +112,12 @@ def transcriber():
                              download_root=str(config.DATA_DIR / "models"))
 
         def transcribe(audio):
-            segs, _ = model.transcribe(audio, language="en", initial_prompt=prompt(), beam_size=5,
-                                       condition_on_previous_text=False)
-            return " ".join(s.text.strip() for s in segs)
+            p = prompt()
+            segs, _ = model.transcribe(
+                audio, language="en", initial_prompt=p, beam_size=5, condition_on_previous_text=False,
+                # skip tones, static and CW IDs before Whisper can invent words for them
+                vad_filter=True, vad_parameters={"min_silence_duration_ms": 500, "speech_pad_ms": 200})
+            return keep_text(list(segs), p)
         print(f"transcriber ready ({config.WHISPER_MODEL})", flush=True)
         status["transcriber"] = "ready"
 

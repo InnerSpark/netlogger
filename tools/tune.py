@@ -15,7 +15,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from netlogger import config, db  # noqa: E402
-from netlogger.audio import clean, prompt  # noqa: E402
+from netlogger.audio import clean, keep_text, prompt  # noqa: E402
 from netlogger.netlog import calls_in  # noqa: E402
 
 
@@ -41,9 +41,15 @@ def main():
             x = clean(load(clip))
             audio = np.interp(np.arange(0, len(x), 0.5), np.arange(len(x)), x).astype(np.float32)
             t = time.time()
-            segs, _ = model.transcribe(audio, language="en", initial_prompt=prompt(), beam_size=5,
-                                       condition_on_previous_text=False)
-            text = " ".join(s.text.strip() for s in segs)
+            p = prompt()
+            segs, _ = model.transcribe(audio, language="en", initial_prompt=p, beam_size=5,
+                                       condition_on_previous_text=False, vad_filter=True,
+                                       vad_parameters={"min_silence_duration_ms": 500, "speech_pad_ms": 200})
+            segs = list(segs)
+            raw = " ".join(s.text.strip() for s in segs)
+            text = keep_text(segs, p)
+            if raw != text:
+                print(f"  {clip.name}  dropped as non-speech: {raw!r}")
             total += time.time() - t
             print(f"  {clip.name}  [{len(x) / 8000:.1f}s]  {text!r}  -> {calls_in(text) or '-'}")
         print(f"  took {total:.1f}s total\n")
