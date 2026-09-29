@@ -15,4 +15,5 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - Name and license class lookup from callook.info.
 - Node control over AMI: connect (monitor only), disconnect, list links, optional auto-connect.
 - Accounts: first-run admin setup, admin and operator roles, password change and reset.
+- Setup page: live status checklist and AllStar setup steps with your values filled in and copy buttons.
 - Docker image and compose file.

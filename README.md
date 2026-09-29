@@ -54,7 +54,7 @@ Net control's browser ───────────────────�
    ```
    The first start downloads the Whisper model (about 500 MB for `small.en`).
 4. **Open `http://<this-computer>:8080`** and create the admin account.
-5. **Set up your AllStar server** to send audio: [docs/allstar-setup.md](docs/allstar-setup.md).
+5. **Follow the Setup page.** After you create the admin account, the app opens a **Setup** page with a live status checklist and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
 
 Useful commands:
 
@@ -104,6 +104,9 @@ It splits the audio at pauses and sends each piece like a real transmission. Any
 ## Troubleshooting
 
 **Nothing shows in Last heard**
+
+Start with the **Setup** page in the app. Its status checklist shows whether audio is arriving and whether node control can reach your server.
+
 1. `docker compose logs -f`: do you see `[2.3s] ...` lines when someone keys up?
 2. Is the logger node linked? Check the **AllStar nodes** card, or on the AllStar server run `sudo asterisk -rx "rpt lstats 1999"`.
 3. Can the AllStar server reach this computer on UDP 34001? Check firewalls and your VPN.

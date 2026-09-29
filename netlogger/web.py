@@ -8,7 +8,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 
-from . import ami, auth, config, db, netlog
+from . import __version__, ami, audio, auth, config, db, netlog
 from .parser import extract_calls
 
 SECURITY_HEADERS = {
@@ -297,6 +297,33 @@ def node_action(h, action):
     h.send(200, {})
 
 
+# ---------- setup page ----------
+def setup_status(h):
+    h.user()
+    last_tx = db.q("SELECT ts FROM transmissions ORDER BY id DESC LIMIT 1", one=True)
+    node = {"configured": config.NODE_CONTROL, "reachable": None, "error": None, "links": []}
+    if config.NODE_CONTROL:
+        s = ami.status()
+        node.update(reachable=s["error"] is None, error=s["error"], links=s["links"])
+    h.send(200, {
+        "version": __version__,
+        "whisper_model": config.WHISPER_MODEL,
+        "transcriber": audio.status["transcriber"],
+        "last_packet": audio.status["last_packet"],
+        "last_transmission": last_tx["ts"] if last_tx else None,
+        "usrp_port": config.USRP_PORT,
+        "http_port": config.HTTP_PORT,
+        "logger_node": config.LOGGER_NODE,
+        "default_node": config.DEFAULT_NODE,
+        "ami_host": config.AMI_HOST,
+        "ami_port": config.AMI_PORT,
+        "ami_user": config.AMI_USER or "netlogger",
+        "node": node,
+        "call_lookup": config.CALL_LOOKUP,
+        "cookie_secure": config.COOKIE_SECURE,
+    })
+
+
 ROUTES = [
     ("GET", r"/api/auth/status", auth_status),
     ("POST", r"/api/auth/setup", auth_setup),
@@ -313,5 +340,6 @@ ROUTES = [
     ("POST", r"/api/checkin", checkin_add),
     ("POST", r"/api/checkin/(\d+)", checkin_update),
     ("GET", r"/api/nodes", nodes),
+    ("GET", r"/api/setup", setup_status),
     ("POST", r"/api/nodes/(connect|disconnect)", node_action),
 ]
