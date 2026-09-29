@@ -1,5 +1,7 @@
 # Net Logger
 
+[![CI](https://github.com/InnerSpark/netlogger/actions/workflows/ci.yml/badge.svg)](https://github.com/InnerSpark/netlogger/actions/workflows/ci.yml) [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+
 **A free, self-hosted check-in logger for AllStar ham radio nets.**
 
 Net Logger listens to your AllStar node, turns each transmission into text, and builds the net roster for you: callsigns, names, license class, traffic and short-time flags, rechecks, and first-time check-ins. Net control watches it live in a browser on a laptop or phone.

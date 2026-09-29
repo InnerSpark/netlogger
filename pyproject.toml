@@ -1,0 +1,28 @@
+[project]
+name = "netlogger"
+version = "1.0.0"
+description = "Free, self-hosted, receive-only check-in logger for AllStar ham radio nets"
+readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Mike Binder" }]
+keywords = ["ham radio", "amateur radio", "allstar", "allstarlink", "net control", "whisper"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Communications :: Ham Radio",
+  "Environment :: Web Environment",
+  "Operating System :: POSIX :: Linux",
+]
+dependencies = ["numpy", "faster-whisper"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/InnerSpark/netlogger"
+Issues = "https://github.com/InnerSpark/netlogger/issues"
+Changelog = "https://github.com/InnerSpark/netlogger/blob/main/CHANGELOG.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
