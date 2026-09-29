@@ -1,6 +1,14 @@
 {
   "name": "netlogger-web",
   "private": true,
+  "version": "1.0.0",
+  "description": "Dashboard for Net Logger, a receive-only check-in logger for AllStar ham radio nets",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/InnerSpark/netlogger.git",
+    "directory": "web"
+  },
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -32,7 +40,5 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"
-  },
-  "license": "AGPL-3.0-only",
-  "version": "1.0.0"
+  }
 }
