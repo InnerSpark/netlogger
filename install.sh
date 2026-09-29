@@ -263,6 +263,10 @@ WHISPER_MODEL=$MODEL
 WHISPER_THREADS=$THREADS
 MIN_SECONDS=0.8
 CALL_LOOKUP=1
+# Calls to expect, comma separated (regulars, net control)
+KNOWN_CALLS=
+# Keep the last N transmissions as WAV for tuning (tools/tune.py). 0 = off
+SAVE_AUDIO=0
 AMI_HOST=127.0.0.1
 AMI_PORT=5038
 AMI_USER=netlogger

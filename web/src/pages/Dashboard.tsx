@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
-import { ArrowRight, Check, Download } from "lucide-react";
+import { ArrowRight, Check, Download, Plus } from "lucide-react";
 import { get, post, type Checkin, type NetState, type SetupState } from "@/lib/api";
 import { NodePanel } from "@/components/NodePanel";
 import { Button } from "@/components/ui/button";
@@ -259,12 +259,29 @@ export function Dashboard() {
               <p className="text-sm text-muted-foreground">Nothing heard yet.</p>
             ) : (
               <ul aria-labelledby="h-heard" className="flex flex-col divide-y text-sm">
-                {state.heard.map((h, i) => (
-                  <li key={`${h.ts}-${i}`} className="py-2">
-                    <span className="font-medium">{timeOf(h.ts)}</span>{" "}
-                    <span className="text-muted-foreground">{h.text}</span>
-                  </li>
-                ))}
+                {state.heard.map((h, i) => {
+                  // Calls heard here that aren't on the roster yet: one tap to add
+                  const missing = open ? (h.calls || "").split(",").filter((c) => c && !checkins.some((x) => x.call === c)) : [];
+                  return (
+                    <li key={`${h.ts}-${i}`} className="flex flex-col gap-1 py-2">
+                      <span>
+                        <span className="font-medium">{timeOf(h.ts)}</span>{" "}
+                        <span className="text-muted-foreground">{h.text}</span>
+                      </span>
+                      {missing.length > 0 && (
+                        <span className="flex flex-wrap gap-1">
+                          {missing.map((c) => (
+                            <Button key={c} variant="outline" size="sm" className="max-md:h-11"
+                              onClick={async () => { await post("/api/checkin", { call: c }); refresh(); }}
+                              aria-label={`Add ${spell(c)} to check-ins`}>
+                              <Plus aria-hidden="true" />Add <span className="font-mono">{c}</span>
+                            </Button>
+                          ))}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>

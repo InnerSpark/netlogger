@@ -4,7 +4,7 @@ import time
 import urllib.request
 
 from . import config, db
-from .parser import extract_calls, extract_flags
+from .parser import extract_calls, extract_flags, match_known, resolve
 
 
 def open_net():
@@ -39,10 +39,26 @@ def lookup(call):
     return info
 
 
+def known_calls(limit=200):
+    """Calls logged before (most recent first) plus KNOWN_CALLS from settings."""
+    rows = db.q("SELECT call FROM checkins GROUP BY call ORDER BY MAX(ts) DESC LIMIT ?", (limit,))
+    return list(dict.fromkeys([r["call"] for r in rows] + config.KNOWN_CALLS))
+
+
+def calls_in(text):
+    """Calls in a transcript, with clipped or garbled ones snapped to known calls where it's clear."""
+    known = set(known_calls())
+    calls = [resolve(c, known) for c in extract_calls(text)]
+    if not calls:
+        hit = match_known(text, known)
+        calls = [hit] if hit else []
+    return list(dict.fromkeys(calls))
+
+
 def log_text(text, seconds):
     """Record one transmission. While a net is open, the first callsign heard is a check-in."""
     net = open_net()
-    calls = extract_calls(text)
+    calls = calls_in(text)
     db.insert("INSERT INTO transmissions (net_id, ts, seconds, text, calls) VALUES (?,?,?,?,?)",
               (net["id"] if net else None, time.time(), seconds, text, ",".join(calls)))
     if net and calls:
