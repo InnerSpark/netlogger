@@ -22,6 +22,7 @@ Thanks for helping. Bug reports, parser fixes, and new callsign formats are the 
 | `web/` | Dashboard: React, Vite, Tailwind, shadcn/ui |
 | `tests/` | pytest suite, including a fake AMI server |
 | `tools/replay.py` | Replays a recording as if it came from a node |
+| `install.sh`, `uninstall.sh` | Native install on an ASL3 server. Test changes with `--config-only --asterisk-dir <copy of /etc/asterisk>` |
 
 ## Run it locally
 

@@ -32,14 +32,26 @@ Net control's browser ───────────────────�
 3. Net Logger splits it into transmissions, transcribes each one with **Whisper** (runs locally, no cloud), and pulls out callsigns.
 4. The dashboard updates every two seconds.
 
-## Requirements
+## Two ways to install
 
-- An **AllStar node you control** (ASL3 or similar) where you can add a private node.
-- A computer to run Net Logger: Linux, a Mac, or a Raspberry Pi 5. **4 GB RAM** or more. Whisper `small.en` runs well on an Apple Silicon Mac or a modern x86 box; use `base.en` or `tiny.en` on a Pi.
-- **Docker** (Docker Engine, Docker Desktop, or OrbStack on a Mac).
-- A network path from the AllStar server to Net Logger. If they're not on the same LAN, a VPN like **Tailscale** is the easy way. See [docs/allstar-setup.md](docs/allstar-setup.md).
+**A. On your AllStar server (recommended).** If you run your own ASL3 node, install Net Logger right on it. One script sets up the logger node and node control **without touching your existing node settings**, and the logger can link to **any public node** through your server. See **[docs/same-server.md](docs/same-server.md)**.
 
-## Quick start
+```
+cd /opt && sudo git clone https://github.com/InnerSpark/netlogger.git
+cd netlogger && sudo ./install.sh
+```
+
+**B. On another computer with Docker.** A Mac, Linux box, or Pi that gets audio from your AllStar server over the network. See the quick start below and **[docs/allstar-setup.md](docs/allstar-setup.md)**.
+
+Either way you need an **AllStar node you control**. Anyone licensed can get a node number free from AllStarLink.
+
+### Requirements
+
+- **Speech to text needs CPU:** 2+ cores and 2 GB free RAM for `base.en`, 4 cores and 4 GB for `small.en`. Apple Silicon Macs and modern x86 boxes handle `small.en` easily.
+- **Option A:** Debian with ASL3.
+- **Option B:** Docker (Docker Engine, Docker Desktop, or OrbStack on a Mac), and a network path from the AllStar server to the logger (same LAN, or a VPN like Tailscale).
+
+## Quick start with Docker (option B)
 
 1. **Get the code and settings file:**
    ```
@@ -82,7 +94,7 @@ docker compose down        # stop it
 
 ## Security
 
-- **Don't put the dashboard on the open internet.** Reach it on your LAN or over a VPN like Tailscale. If you must expose it, put it behind a reverse proxy with HTTPS and set `COOKIE_SECURE=1`.
+- **Only put the dashboard on the internet behind HTTPS.** The installer sets this up for a subdomain (see [docs/same-server.md](docs/same-server.md)). With Docker, keep it on your LAN or VPN, or put it behind a reverse proxy with HTTPS and set `COOKIE_SECURE=1` and `TRUST_PROXY=1`.
 - The AMI account only needs `command` rights. Limit it to the logger's address in `manager.conf`.
 - Report security issues privately: see [SECURITY.md](SECURITY.md).
 
@@ -107,7 +119,7 @@ It splits the audio at pauses and sends each piece like a real transmission. Any
 
 Start with the **Setup** page in the app. Its status checklist shows whether audio is arriving and whether node control can reach your server.
 
-1. `docker compose logs -f`: do you see `[2.3s] ...` lines when someone keys up?
+1. Logs: `journalctl -u netlogger -f` (installer) or `docker compose logs -f` (Docker). Do you see `[2.3s] ...` lines when someone keys up?
 2. Is the logger node linked? Check the **AllStar nodes** card, or on the AllStar server run `sudo asterisk -rx "rpt lstats 1999"`.
 3. Can the AllStar server reach this computer on UDP 34001? Check firewalls and your VPN.
 

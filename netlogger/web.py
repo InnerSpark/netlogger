@@ -54,6 +54,11 @@ class Handler(BaseHTTPRequestHandler):
         return c["nl_session"].value if "nl_session" in c else None
 
     def client(self):
+        if config.TRUST_PROXY:
+            # The proxy appends the real client address last; earlier entries can be spoofed
+            fwd = [a.strip() for a in self.headers.get("X-Forwarded-For", "").split(",") if a.strip()]
+            if fwd:
+                return fwd[-1]
         return self.client_address[0]
 
     def json_body(self):
@@ -318,6 +323,7 @@ def setup_status(h):
         "ami_host": config.AMI_HOST,
         "ami_port": config.AMI_PORT,
         "ami_user": config.AMI_USER or "netlogger",
+        "same_host": config.SAME_HOST,
         "node": node,
         "call_lookup": config.CALL_LOOKUP,
         "cookie_secure": config.COOKIE_SECURE,

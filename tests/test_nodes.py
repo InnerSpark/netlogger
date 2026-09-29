@@ -52,3 +52,10 @@ def test_node_api_off(admin, monkeypatch):
     monkeypatch.setattr(config, "NODE_CONTROL", False)
     assert admin.get("/api/nodes")[1]["enabled"] is False
     assert admin.post("/api/nodes/connect", {"node": "41234"})[0] == 400
+
+
+def test_no_app_rpt(fake_ami):
+    # Real Asterisk 20 reply when app_rpt isn't loaded
+    fake_ami.no_app_rpt = True
+    with pytest.raises(ami.AMIError, match="app_rpt"):
+        ami.links()

@@ -42,7 +42,8 @@ export function Setup() {
     return () => clearInterval(t);
   }, [load]);
 
-  const ip = loggerAddress();
+  // Same server as AllStar: everything talks over 127.0.0.1
+  const ip = s?.same_host ? "127.0.0.1" : loggerAddress();
   const node = s?.logger_node || "1999";
   const port = s?.usrp_port || 34001;
   const testNode = s?.default_node || "2000";
@@ -129,6 +130,11 @@ export function Setup() {
             </a>
           </Button>
         </div>
+        {s?.same_host && (
+          <p className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+            <strong>Installed with install.sh?</strong> Steps 1 to 5 are already done. If Audio from AllStar still says Not set up, restart Asterisk: <code className="font-mono">sudo systemctl restart asterisk</code>
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Steps 1 to 4 run on your AllStar server over SSH. Back up <code className="font-mono">/etc/asterisk</code> first.
           Written for ASL3; other builds use the same files.
@@ -139,7 +145,11 @@ export function Setup() {
             The server sends audio to this logger on <strong>UDP {port}</strong>. On the same network, use this logger's LAN IP.
             If the server is somewhere else (like a cloud node), install <strong>Tailscale</strong> on both and use this logger's Tailscale IP (it starts with 100).
           </p>
-          <p className="text-muted-foreground">Below, the logger's address is filled in as <code className="font-mono">{ip}</code>, the address you opened this page with. Change it if the server reaches the logger another way.</p>
+          {s?.same_host ? (
+            <p className="text-muted-foreground">Net Logger runs on the AllStar server itself, so the steps below use <code className="font-mono">127.0.0.1</code>. Nothing else to set up here.</p>
+          ) : (
+            <p className="text-muted-foreground">Below, the logger's address is filled in as <code className="font-mono">{ip}</code>, the address you opened this page with. Change it if the server reaches the logger another way.</p>
+          )}
         </Step>
 
         <Step n={2} title="Make sure the USRP channel is loaded">
@@ -179,7 +189,7 @@ read = command
 write = command`}</Code>
           <p>Make sure <code className="font-mono">[general]</code> in that file has <code className="font-mono">enabled = yes</code>, then reload:</p>
           <Code label="manager reload command" onCopy={copied}>{`sudo asterisk -rx "manager reload"`}</Code>
-          <p>On the computer running Net Logger, set these in <code className="font-mono">.env</code>:</p>
+          <p>On the computer running Net Logger, set these in <code className="font-mono">{s?.same_host ? "/etc/netlogger/netlogger.env" : ".env"}</code>:</p>
           <Code label=".env settings" onCopy={copied}>{`AMI_HOST=${amiHost}
 AMI_PORT=${s?.ami_port || 5038}
 AMI_USER=${s?.ami_user || "netlogger"}
@@ -187,7 +197,7 @@ AMI_SECRET=<same secret>
 LOGGER_NODE=${node}
 DEFAULT_NODE=${s?.default_node || "<your node>"}`}</Code>
           <p>Then restart Net Logger:</p>
-          <Code label="restart Net Logger command" onCopy={copied}>{`docker compose up -d`}</Code>
+          <Code label="restart Net Logger command" onCopy={copied}>{s?.same_host ? `sudo systemctl restart netlogger` : `docker compose up -d`}</Code>
         </Step>
 
         <Step n={6} title="Connect from the Dashboard">

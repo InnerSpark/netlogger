@@ -29,7 +29,7 @@ def transcriber():
     else:
         from faster_whisper import WhisperModel
         status["transcriber"] = "loading"
-        model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8",
+        model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8", cpu_threads=config.WHISPER_THREADS,
                              download_root=str(config.DATA_DIR / "models"))
 
         def transcribe(audio):
