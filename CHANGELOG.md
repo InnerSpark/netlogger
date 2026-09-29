@@ -13,6 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - `SAVE_AUDIO` keeps recent transmissions as WAV files, and `tools/tune.py` compares Whisper models on them.
 
 ### Fixed
+- Whisper no longer invents text for static, tones and CW IDs: voice activity filter, drops low-confidence and looping segments, drops transcripts that only read the prompt back, and strips stock caption phrases ("New videos every week!").
 - Parser handles possessives ("Six's"), "Whisky", "ex-ray", "fife", "tree", "niner".
 
 ## [1.0.0] - 2026-10-02
