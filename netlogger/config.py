@@ -37,6 +37,8 @@ AUTO_CONNECT = _bool("AUTO_CONNECT", False)
 # Set to 1 when a reverse proxy (Apache, nginx, Caddy) sits in front. The client IP is then
 # read from X-Forwarded-For, so login throttling applies per person, not to the proxy.
 TRUST_PROXY = _bool("TRUST_PROXY", False)
+# Behind Cloudflare, set to CF-Connecting-IP so each visitor is throttled separately
+CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "").strip()
 
 # Accounts
 COOKIE_SECURE = _bool("COOKIE_SECURE", False)  # set when serving over HTTPS

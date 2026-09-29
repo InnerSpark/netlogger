@@ -48,3 +48,10 @@ def test_setup_status(admin, client, fake_ami):
     code, s = admin.get("/api/setup")
     assert code == 200 and s["logger_node"] == "1999" and s["node"]["configured"] and s["node"]["reachable"]
     assert "AMI_SECRET" not in str(s) and "s3cret" not in str(s)
+
+
+def test_head_requests(client):
+    import urllib.request
+    r = urllib.request.Request(client.base + "/", method="HEAD")
+    with urllib.request.urlopen(r) as resp:
+        assert resp.status == 200 and resp.read() == b""

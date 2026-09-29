@@ -16,6 +16,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - Node control over AMI: connect (monitor only), disconnect, list links, optional auto-connect.
 - Accounts: first-run admin setup, admin and operator roles, password change and reset.
 - Setup page: live status checklist and AllStar setup steps with your values filled in and copy buttons.
-- `install.sh` for ASL3 servers: adds the logger node and AMI user through include files without editing existing node settings, backs up every file, runs under systemd at lower priority than Asterisk. `uninstall.sh` reverses it.
-- Reverse proxy support (`TRUST_PROXY`) so login throttling works per person behind Apache, nginx, or Caddy.
+- `install.sh` for ASL3 servers: adds the logger node and AMI user through include files without editing existing node settings, backs up every file, runs under systemd at lower priority than Asterisk, and refuses to install with under 1 GB of free memory. `uninstall.sh` reverses it.
+- Reverse proxy support (`TRUST_PROXY`, plus `CLIENT_IP_HEADER` for Cloudflare) so login throttling works per person behind Apache, nginx, or Caddy.
 - Docker image and compose file.

@@ -85,3 +85,23 @@ def test_throttle_per_client_behind_proxy(admin, server, monkeypatch):
 
     assert [login("203.0.113.5", "wrong password!") for _ in range(6)][-1] == 429
     assert login("198.51.100.7", "correct horse") == 200  # someone else isn't locked out
+
+
+def test_cloudflare_client_ip_header(admin, server, monkeypatch):
+    from netlogger import config
+    import json, urllib.request
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    monkeypatch.setattr(config, "CLIENT_IP_HEADER", "CF-Connecting-IP")
+
+    def login(ip, pw):
+        r = urllib.request.Request(server + "/api/auth/login", method="POST",
+                                   data=json.dumps({"username": "ncs", "password": pw}).encode(),
+                                   headers={"Content-Type": "application/json", "CF-Connecting-IP": ip,
+                                            "X-Forwarded-For": "162.158.0.1"})  # same Cloudflare edge for both
+        try:
+            return urllib.request.urlopen(r).status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    assert [login("203.0.113.5", "wrong password!") for _ in range(6)][-1] == 429
+    assert login("198.51.100.7", "correct horse") == 200
