@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
-import { Check, Download } from "lucide-react";
-import { get, post, type Checkin, type NetState } from "@/lib/api";
+import { ArrowRight, Check, Download } from "lucide-react";
+import { get, post, type Checkin, type NetState, type SetupState } from "@/lib/api";
 import { NodePanel } from "@/components/NodePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,12 @@ export function Dashboard() {
   const rosterHeading = useRef<HTMLHeadingElement>(null);
   const recheckHeading = useRef<HTMLHeadingElement>(null);
   const phone = useIsPhone();
+  const [noAudio, setNoAudio] = useState(false);
+
+  // Nudge toward Setup until the logger has heard anything from AllStar
+  useEffect(() => {
+    get<SetupState>("/api/setup").then((s) => setNoAudio(!s.last_packet && !s.last_transmission)).catch(() => {});
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -124,6 +130,17 @@ export function Dashboard() {
           </p>
         )}
       </div>
+
+      {noAudio && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/50 px-4 py-3">
+          <p className="text-sm">
+            <strong>Not hearing AllStar yet.</strong> Finish hooking up your node to start logging from the air.
+          </p>
+          <Button asChild size="sm" className="max-md:h-11">
+            <a href="#/setup">Go to Setup<ArrowRight aria-hidden="true" /></a>
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <NetControls open={open} netName={net?.name} onChange={refresh} />

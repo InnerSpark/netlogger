@@ -65,7 +65,7 @@ export function NodePanel() {
         <CardDescription>
           {s?.enabled
             ? <>Logger node {s.logger_node} listens in monitor mode. It never transmits.</>
-            : "Node control is off. Set the AMI settings in .env to turn it on."}
+            : <>Node control is off. <a href="#/setup" className="font-medium text-foreground underline underline-offset-4">See Setup, step 5</a>.</>}
         </CardDescription>
       </CardHeader>
       {s?.enabled && (

@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Radio } from "lucide-react";
 import { get, post, setOnUnauthorized, type User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AuthScreen } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
 import { Users } from "@/pages/Users";
+import { Setup } from "@/pages/Setup";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
 type Status = { setup_needed: boolean; user: User | null };
-type View = "dashboard" | "users";
+type View = "dashboard" | "users" | "setup";
 
-const viewFromHash = (): View => (window.location.hash === "#/users" ? "users" : "dashboard");
+const viewFromHash = (): View =>
+  window.location.hash === "#/users" ? "users" : window.location.hash === "#/setup" ? "setup" : "dashboard";
 
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -31,15 +33,28 @@ export default function App() {
     setOnUnauthorized(() => setStatus((s) => (s ? { ...s, user: null } : s)));
   }, [load]);
 
-  // Hash routing so the back button works; focus the new page's heading on change
+  // Hash routing so the back button works
   useEffect(() => {
-    const on = () => {
-      setView(viewFromHash());
-      requestAnimationFrame(() => document.querySelector<HTMLElement>("main h1")?.focus());
-    };
+    const on = () => setView(viewFromHash());
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
+
+  // Move focus to the page heading when the page changes or after logging in,
+  // so screen readers announce where you landed
+  const userId = status?.user?.id;
+  const shown = view === "users" && status?.user?.role !== "admin" ? "dashboard" : view;
+  const initial = useRef(true);
+  const loaded = !!status;
+  useEffect(() => {
+    if (!loaded) return;
+    if (initial.current) {
+      initial.current = false;
+      if (userId) return; // opened the page already logged in: leave focus alone
+    }
+    if (!userId) return;
+    requestAnimationFrame(() => document.querySelector<HTMLElement>("main h1")?.focus());
+  }, [shown, userId, loaded]);
 
   if (error) {
     return (
@@ -50,11 +65,12 @@ export default function App() {
     );
   }
   if (!status) return <main className="px-4 py-16 text-center text-muted-foreground">Loading…</main>;
-  if (status.setup_needed) return <AuthScreen mode="setup" onDone={load} />;
+  // After the first admin is created, land on the Setup page
+  if (status.setup_needed) return <AuthScreen mode="setup" onDone={() => { window.location.hash = "#/setup"; setView("setup"); load(); }} />;
   if (!status.user) return <AuthScreen mode="login" onDone={load} />;
 
   const user = status.user;
-  const current = view === "users" && user.role === "admin" ? "users" : "dashboard";
+  const current: View = view === "users" && user.role !== "admin" ? "dashboard" : view;
 
   const logout = async () => {
     await post("/api/auth/logout").catch(() => {});
@@ -77,6 +93,9 @@ export default function App() {
             <Button asChild variant={current === "dashboard" ? "secondary" : "ghost"} size="sm">
               <a href="#/" aria-current={current === "dashboard" ? "page" : undefined}>Dashboard</a>
             </Button>
+            <Button asChild variant={current === "setup" ? "secondary" : "ghost"} size="sm">
+              <a href="#/setup" aria-current={current === "setup" ? "page" : undefined}>Setup</a>
+            </Button>
             {user.role === "admin" && (
               <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm">
                 <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
@@ -94,7 +113,7 @@ export default function App() {
         </div>
       </header>
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">
-        {current === "users" ? <Users me={user} /> : <Dashboard />}
+        {current === "users" ? <Users me={user} /> : current === "setup" ? <Setup /> : <Dashboard />}
       </main>
     </>
   );

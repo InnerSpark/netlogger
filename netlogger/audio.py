@@ -1,5 +1,6 @@
 """Receive AllStar audio over USRP and transcribe each transmission. Receive-only."""
 import queue
+import time
 import socket
 import struct
 from pathlib import Path
@@ -15,14 +16,19 @@ PROMPT = ("Amateur radio net check-ins. Callsigns spoken in phonetics: "
 
 jobs = queue.Queue()
 
+# For the Setup page
+status = {"transcriber": "starting", "last_packet": None, "error": None}
+
 
 def transcriber():
     if config.FAKE_TRANSCRIPTS:
         lines = iter(Path(config.FAKE_TRANSCRIPTS).read_text().splitlines())
         transcribe = lambda audio: next(lines, "")
         print("transcriber ready (fake)", flush=True)
+        status["transcriber"] = "ready"
     else:
         from faster_whisper import WhisperModel
+        status["transcriber"] = "loading"
         model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8",
                              download_root=str(config.DATA_DIR / "models"))
 
@@ -30,6 +36,7 @@ def transcriber():
             segs, _ = model.transcribe(audio, language="en", initial_prompt=PROMPT, beam_size=5)
             return " ".join(s.text.strip() for s in segs)
         print(f"transcriber ready ({config.WHISPER_MODEL})", flush=True)
+        status["transcriber"] = "ready"
 
     while True:
         pcm8k = jobs.get()
@@ -68,6 +75,7 @@ def listener():
             continue
         if len(data) < USRP_HDR.size or data[:4] != b"USRP":
             continue
+        status["last_packet"] = time.time()
         _, _, _, keyup, _, ptype, _, _ = USRP_HDR.unpack_from(data)
         if ptype != 0:  # voice only
             continue

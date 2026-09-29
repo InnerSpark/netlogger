@@ -5,6 +5,8 @@ Net Logger needs two things from your AllStar server:
 1. **Audio:** a private node that sends what it hears to Net Logger over USRP.
 2. **Control (optional):** an AMI login so the dashboard can connect and disconnect that node.
 
+**Tip:** the **Setup** page in the app has these same steps with your node number, ports, and addresses filled in, plus a live status check.
+
 These steps are for **ASL3**. Other AllStar builds use the same files, but paths and defaults can differ. After each change, check with the commands shown.
 
 Back up `/etc/asterisk` before editing.

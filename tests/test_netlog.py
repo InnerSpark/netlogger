@@ -41,3 +41,10 @@ def test_security_headers_and_spa(client):
         assert b"<title>t</title>" in r.read()
     with urllib.request.urlopen(client.base + "/../../etc/passwd") as r:
         assert b"<title>t</title>" in r.read()
+
+
+def test_setup_status(admin, client, fake_ami):
+    assert client.get("/api/setup")[0] == 401
+    code, s = admin.get("/api/setup")
+    assert code == 200 and s["logger_node"] == "1999" and s["node"]["configured"] and s["node"]["reachable"]
+    assert "AMI_SECRET" not in str(s) and "s3cret" not in str(s)

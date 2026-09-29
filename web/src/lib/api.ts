@@ -36,3 +36,11 @@ export type Checkin = {
 export type NetState = { net: Net | null; checkins: Checkin[]; heard: { ts: number; text: string }[] };
 export type Link = { node: string; direction: string; connected_for: string; state: string };
 export type NodeState = { enabled: boolean; logger_node: string; default_node: string; links: Link[]; error: string | null };
+export type SetupState = {
+  version: string; whisper_model: string; transcriber: "starting" | "loading" | "ready";
+  last_packet: number | null; last_transmission: number | null;
+  usrp_port: number; http_port: number; logger_node: string; default_node: string;
+  ami_host: string; ami_port: number; ami_user: string;
+  node: { configured: boolean; reachable: boolean | null; error: string | null; links: Link[] };
+  call_lookup: boolean; cookie_secure: boolean;
+};
