@@ -7,7 +7,7 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: the logger
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="Net Logger" \
       org.opencontainers.image.description="Receive-only check-in logger for AllStar ham radio nets" \
