@@ -53,6 +53,10 @@ def test_user_management(admin, server):
     assert op.post("/api/auth/login", {"username": "kilo", "password": "operator pass"})[0] == 200
     assert op.get("/api/users")[0] == 403  # operators can't manage users
     assert op.get("/api/state")[0] == 200
+    # operators see audio health only, not server details
+    code, st = op.get("/api/setup")
+    assert code == 200 and set(st) == {"transcriber", "last_packet", "last_transmission"}
+    assert "ami_host" in admin.get("/api/setup")[1]
     me = next(u for u in admin.get("/api/users")[1]["users"] if u["username"] == "ncs")
     kilo = next(u for u in admin.get("/api/users")[1]["users"] if u["username"] == "kilo")
     assert admin.post(f"/api/users/{me['id']}", {"delete": True})[0] == 400  # not yourself

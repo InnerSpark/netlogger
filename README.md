@@ -20,6 +20,7 @@ Net Logger listens to your AllStar node, turns each transmission into text, and 
 - **Accounts:** an admin plus as many net control operators as you need.
 - **Scheduled nets:** weekly, monthly (first to last weekday) or one time. The net opens, links the node, and closes on its own.
 - **Past nets:** every net's roster and full transcript, searchable, with CSV and text downloads.
+- **Stats:** check-ins per net over time, first-timers, stations heard, and your regulars, by net and time range.
 - **CSV export** after the net.
 - **Works on a phone:** big tap targets, light and dark mode, screen reader friendly.
 
@@ -70,7 +71,7 @@ Either way you need an **AllStar node you control**. Anyone licensed can get a n
    ```
    The first start downloads the Whisper model (about 500 MB for `small.en`).
 4. **Open `http://<this-computer>:8080`** and create the admin account.
-5. **Follow the Setup page.** After you create the admin account, the app opens a **Setup** page with a live status checklist and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
+5. **Follow the Status page.** After you create the admin account, the app opens a **Status** page (admins only) with a live health check and a setup guide and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
 
 Useful commands:
 
@@ -92,6 +93,10 @@ docker compose down        # stop it
 ### Scheduling a net
 
 Open **Nets** and click **Schedule a net**. Pick the day, start time, length and node. At start time the logger opens the net (named with the date), links the node in monitor mode, and closes it when the time is up. It unlinks the node afterward unless you turn that off. If a net is already open, the scheduled one is skipped. Times use the time zone of the browser that created the schedule.
+
+### Stats
+
+**Stats** charts check-ins per net (returning vs first time) and shows nets held, typical check-ins compared with the period before, stations heard, first-timers, and a regulars list with attendance. Filter by time range and by scheduled net. **Show table** lists every value.
 
 ### Past nets
 
@@ -134,7 +139,7 @@ It splits the audio at pauses and sends each piece like a real transmission. Any
 
 **Nothing shows in Last heard**
 
-Start with the **Setup** page in the app. Its status checklist shows whether audio is arriving and whether node control can reach your server.
+Start with the **Status** page in the app (admins only). Its health check shows whether audio is arriving and whether node control can reach your server.
 
 1. Logs: `journalctl -u netlogger -f` (installer) or `docker compose logs -f` (Docker). Do you see `[2.3s] ...` lines when someone keys up?
 2. Is the logger node linked? Check the **AllStar nodes** card, or on the AllStar server run `sudo asterisk -rx "rpt lstats 1999"`.

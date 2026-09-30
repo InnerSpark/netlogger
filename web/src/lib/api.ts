@@ -57,3 +57,12 @@ export type Schedule = {
 export type NetSummary = Net & { schedule_id: number | null; schedule_name: string | null; checkin_count: number };
 export type Transmission = { ts: number; seconds: number; text: string; calls: string | null };
 export type NetDetail = { net: Net; checkins: Checkin[]; transmissions: Transmission[] };
+
+export type StatNet = { id: number; name: string; opened: number; closed: number | null; schedule_id: number | null;
+  checkins: number; first_timers: number; traffic: number; minutes: number };
+export type Stats = {
+  days: number; schedule: number | null; nets: StatNet[];
+  summary: { nets: number; median_checkins: number | null; stations: number; first_timers: number; prev_median_checkins: number | null };
+  regulars: { call: string; name: string | null; nets: number; last: number }[];
+  schedules: { id: number; name: string }[];
+};

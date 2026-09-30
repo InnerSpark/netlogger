@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 // Link the logger's private node to any AllStar node, monitor only.
-export function NodePanel() {
+export function NodePanel({ admin }: { admin: boolean }) {
   const [s, setS] = useState<NodeState | null>(null);
   const [node, setNode] = useState("");
   const [error, setError] = useState("");
@@ -65,7 +65,9 @@ export function NodePanel() {
         <CardDescription>
           {s?.enabled
             ? <>Logger node {s.logger_node} listens in monitor mode. It never transmits.</>
-            : <>Node control is off. <a href="#/setup" className="font-medium text-foreground underline underline-offset-4">See Setup, step 5</a>.</>}
+            : admin
+              ? <>Node control is off. <a href="#/status" className="font-medium text-foreground underline underline-offset-4">See the setup guide, step 5</a>.</>
+              : <>Node control is off. An admin can turn it on.</>}
         </CardDescription>
       </CardHeader>
       {s?.enabled && (

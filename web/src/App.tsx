@@ -5,19 +5,20 @@ import { Button } from "@/components/ui/button";
 import { AuthScreen, VerifyLicense } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
 import { Users } from "@/pages/Users";
-import { Setup } from "@/pages/Setup";
+import { Status as StatusPage } from "@/pages/Status";
+import { Stats } from "@/pages/Stats";
 import { Nets } from "@/pages/Nets";
 import { NetDetail } from "@/pages/NetDetail";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
 type Status = { setup_needed: boolean; require_license: boolean; user: User | null };
-type View = "dashboard" | "users" | "setup" | "nets" | `net-${number}`;
+type View = "dashboard" | "users" | "status" | "stats" | "nets" | `net-${number}`;
 
 const viewFromHash = (): View => {
   const h = window.location.hash;
   const m = h.match(/^#\/nets\/(\d+)$/);
   if (m) return `net-${Number(m[1])}`;
-  return h === "#/users" ? "users" : h === "#/setup" ? "setup" : h === "#/nets" ? "nets" : "dashboard";
+  return h === "#/users" ? "users" : h === "#/status" || h === "#/setup" ? "status" : h === "#/nets" ? "nets" : h === "#/stats" ? "stats" : "dashboard";
 };
 
 export default function App() {
@@ -49,7 +50,7 @@ export default function App() {
   // Move focus to the page heading when the page changes or after logging in,
   // so screen readers announce where you landed
   const userId = status?.user?.id;
-  const shown = view === "users" && status?.user?.role !== "admin" ? "dashboard" : view;
+  const shown = (view === "users" || view === "status") && status?.user?.role !== "admin" ? "dashboard" : view;
   const initial = useRef(true);
   const loaded = !!status;
   useEffect(() => {
@@ -72,14 +73,14 @@ export default function App() {
   }
   if (!status) return <main className="px-4 py-16 text-center text-muted-foreground">Loading…</main>;
   // After the first admin is created, land on the Setup page
-  if (status.setup_needed) return <AuthScreen mode="setup" requireLicense={status.require_license} onDone={() => { window.location.hash = "#/setup"; setView("setup"); load(); }} />;
+  if (status.setup_needed) return <AuthScreen mode="setup" requireLicense={status.require_license} onDone={() => { window.location.hash = "#/status"; setView("status"); load(); }} />;
   if (!status.user) return <AuthScreen mode="login" onDone={load} />;
 
   const user = status.user;
   if (!user.license_ok) {
     return <VerifyLicense user={user} onDone={load} onLogout={async () => { await post("/api/auth/logout").catch(() => {}); load(); }} />;
   }
-  const current: View = view === "users" && user.role !== "admin" ? "dashboard" : view;
+  const current: View = (view === "users" || view === "status") && user.role !== "admin" ? "dashboard" : view;
 
   const logout = async () => {
     await post("/api/auth/logout").catch(() => {});
@@ -105,13 +106,18 @@ export default function App() {
             <Button asChild variant={current === "nets" || current.startsWith("net-") ? "secondary" : "ghost"} size="sm">
               <a href="#/nets" aria-current={current === "nets" ? "page" : undefined}>Nets</a>
             </Button>
-            <Button asChild variant={current === "setup" ? "secondary" : "ghost"} size="sm">
-              <a href="#/setup" aria-current={current === "setup" ? "page" : undefined}>Setup</a>
+            <Button asChild variant={current === "stats" ? "secondary" : "ghost"} size="sm">
+              <a href="#/stats" aria-current={current === "stats" ? "page" : undefined}>Stats</a>
             </Button>
             {user.role === "admin" && (
-              <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm">
-                <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
-              </Button>
+              <>
+                <Button asChild variant={current === "status" ? "secondary" : "ghost"} size="sm">
+                  <a href="#/status" aria-current={current === "status" ? "page" : undefined}>Status</a>
+                </Button>
+                <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm">
+                  <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
+                </Button>
+              </>
             )}
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm">
@@ -126,10 +132,11 @@ export default function App() {
       </header>
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">
         {current === "users" ? <Users me={user} />
-          : current === "setup" ? <Setup />
+          : current === "status" ? <StatusPage />
           : current === "nets" ? <Nets />
+          : current === "stats" ? <Stats />
           : current.startsWith("net-") ? <NetDetail key={current} id={Number(current.slice(4))} />
-          : <Dashboard />}
+          : <Dashboard admin={user.role === "admin"} />}
       </main>
     </>
   );

@@ -474,10 +474,73 @@ def node_action(h, action):
     h.send(200, {})
 
 
+# ---------- stats ----------
+def _median(xs):
+    xs = sorted(xs)
+    if not xs:
+        return None
+    m = len(xs) // 2
+    return xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
+
+
+def _net_rows(since, until, schedule_id):
+    where, args = ["n.opened >= ?", "n.opened < ?"], [since, until]
+    if schedule_id:
+        where.append("n.schedule_id = ?")
+        args.append(schedule_id)
+    return db.q(f"""SELECT n.id, n.name, n.opened, n.closed, n.schedule_id,
+                      COUNT(c.id) AS checkins,
+                      COALESCE(SUM(c.first_time), 0) AS first_timers,
+                      COALESCE(SUM(CASE WHEN ',' || c.flags || ',' LIKE '%,traffic,%' THEN 1 ELSE 0 END), 0) AS traffic
+                    FROM nets n LEFT JOIN checkins c ON c.net_id = n.id
+                    WHERE {' AND '.join(where)}
+                    GROUP BY n.id ORDER BY n.opened""", tuple(args))
+
+
+def stats(h):
+    """Per-net numbers for charts, plus a summary and the regulars list.
+
+    ?days=90 (0 = all time) and ?schedule=<id> (omit for every net).
+    """
+    h.user()
+    m = re.search(r"[?&]days=(\d+)", h.path)
+    days = int(m.group(1)) if m else 90
+    m = re.search(r"[?&]schedule=(\d+)", h.path)
+    sid = int(m.group(1)) if m else None
+    now = time.time()
+    since = now - days * 86400 if days else 0
+    nets = _net_rows(since, now + 1, sid)
+    for n in nets:
+        n["minutes"] = round(((n["closed"] or now) - n["opened"]) / 60)
+    ids = [n["id"] for n in nets]
+    marks = ",".join("?" * len(ids)) or "NULL"
+    stations = db.q(f"""SELECT call, MAX(name) AS name, COUNT(DISTINCT net_id) AS nets, MAX(ts) AS last
+                        FROM checkins WHERE net_id IN ({marks})
+                        GROUP BY call ORDER BY nets DESC, last DESC""", tuple(ids))
+    summary = {
+        "nets": len(nets),
+        "median_checkins": _median([n["checkins"] for n in nets]),
+        "stations": len(stations),
+        "first_timers": sum(n["first_timers"] for n in nets),
+        "prev_median_checkins": None,
+    }
+    if days:  # compare with the period just before this one
+        prev = _net_rows(since - days * 86400, since, sid)
+        summary["prev_median_checkins"] = _median([n["checkins"] for n in prev])
+    series = db.q("SELECT id, name FROM schedules ORDER BY name COLLATE NOCASE")
+    h.send(200, {"days": days, "schedule": sid, "nets": nets, "summary": summary,
+                 "regulars": stations[:15], "schedules": series})
+
+
 # ---------- setup page ----------
 def setup_status(h):
-    h.user()
+    u = h.user()
     last_tx = db.q("SELECT ts FROM transmissions ORDER BY id DESC LIMIT 1", one=True)
+    if u["role"] != "admin":
+        # Operators only need to know whether audio is flowing, not server details
+        return h.send(200, {"transcriber": audio.status["transcriber"],
+                            "last_packet": audio.status["last_packet"],
+                            "last_transmission": last_tx["ts"] if last_tx else None})
     node = {"configured": config.NODE_CONTROL, "reachable": None, "error": None, "links": []}
     if config.NODE_CONTROL:
         s = ami.status()
@@ -515,6 +578,7 @@ ROUTES = [
     ("GET", r"/api/state", state),
     ("GET", r"/api/export\.csv", export_csv),
     ("GET", r"/api/nets", nets_list),
+    ("GET", r"/api/stats", stats),
     ("GET", r"/api/nets/(\d+)", net_detail),
     ("GET", r"/api/nets/(\d+)/transcript\.txt", net_transcript),
     ("GET", r"/api/schedules", schedules_list),
