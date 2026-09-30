@@ -1,6 +1,7 @@
 """Check that a callsign belongs to a current amateur radio license.
 
-Uses callook.info, which mirrors the FCC's license database (US calls only).
+Uses callook.info, which mirrors the FCC's license database. It only has US calls, so
+licenses from other countries are confirmed by a logger admin instead.
 """
 import json
 import re
@@ -9,13 +10,14 @@ import urllib.request
 from datetime import datetime
 
 from . import config
+from .parser import CALL_RE, is_us
 
 
 class LookupUnavailable(Exception):
     """callook.info couldn't be reached or is refreshing its data. Not the user's fault."""
 
 
-CALL_FORMAT = re.compile(r"^[A-Z0-9]{3,7}$")
+CALL_FORMAT = CALL_RE
 
 
 def normalize(call):
@@ -52,13 +54,17 @@ def check(call):
     call = normalize(call)
     if not CALL_FORMAT.match(call):
         return {"ok": False, "call": call, "reason": "That doesn't look like a callsign."}
+    if not is_us(call):
+        return {"ok": False, "call": call, "non_us": True,
+                "reason": f"{call} is licensed outside the US. The automatic check only covers US calls, "
+                          "so a logger admin needs to confirm it."}
     d = fetch(call)
     status = str(d.get("status", "")).upper()
     if status == "UPDATING":
         raise LookupUnavailable("callook.info is updating its data")
     if status != "VALID":
         return {"ok": False, "call": call,
-                "reason": f"{call} isn't an active license in the FCC database. Non-US calls need an admin to verify them."}
+                "reason": f"{call} isn't an active license in the FCC database."}
     expires = (d.get("otherInfo") or {}).get("expiryDate", "")
     exp = _parse_date(expires)
     if exp and exp < datetime.now():

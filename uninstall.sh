@@ -46,6 +46,7 @@ if [ "$CONFIG_ONLY" = 1 ]; then exit 0; fi
 say "Removing the service"
 systemctl disable --now netlogger 2>/dev/null || true
 rm -f /etc/systemd/system/netlogger.service
+rm -f /usr/local/bin/netlogger
 systemctl daemon-reload
 rm -rf /opt/netlogger /etc/netlogger
 if [ "$PURGE" = 1 ]; then

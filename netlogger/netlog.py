@@ -4,7 +4,7 @@ import time
 import urllib.request
 
 from . import config, db
-from .parser import extract_calls, extract_flags, match_known, resolve
+from .parser import extract_calls, extract_flags, is_us, match_known, resolve
 
 
 def open_net():
@@ -19,9 +19,9 @@ _cache = {}
 
 
 def lookup(call):
-    """Name, license class and location from callook.info (US only). {} if unreachable."""
-    if not config.CALL_LOOKUP:
-        return {}
+    """Name, license class and location from callook.info. {} for non-US calls or if unreachable."""
+    if not config.CALL_LOOKUP or not is_us(call):
+        return {}  # callook.info only has US licenses
     if call in _cache:
         return _cache[call]
     try:

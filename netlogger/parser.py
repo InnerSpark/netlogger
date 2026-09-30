@@ -1,4 +1,4 @@
-"""Turn a transcript into US callsigns and check-in flags."""
+"""Turn a transcript into amateur callsigns (any country) and check-in flags."""
 import re
 
 PHONETIC = {
@@ -15,8 +15,15 @@ DIGITS = {
     "zero": "0", "oh": "0", "one": "1", "two": "2", "three": "3", "tree": "3", "four": "4",
     "five": "5", "fife": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "niner": "9",
 }
-# US amateur callsign: 1x2, 1x3, 2x1, 2x2, 2x3 formats
-CALL_RE = re.compile(r"^(?:[KNW][A-Z]?|A[A-L])[0-9][A-Z]{1,3}$")
+# ITU amateur callsign: prefix (1-2 letters, letter+digit or digit+letter), a digit,
+# then a 1-3 letter suffix. W6UXD, VE3ABC, G4ABC, M0XYZ, 2E0ABC, DL1AB, VK2ABC, 9A1AA, E73ABC.
+CALL_RE = re.compile(r"^(?:[A-Z]{1,2}|[A-Z][0-9]|[0-9][A-Z])[0-9][A-Z]{1,3}$")
+US_RE = re.compile(r"^(?:[KNW][A-Z]?|A[A-L])[0-9][A-Z]{1,3}$")
+
+
+def is_us(call):
+    """US calls are the ones callook.info (the FCC database) can look up."""
+    return bool(US_RE.match(call or ""))
 
 FLAG_PATTERNS = {
     "traffic": re.compile(r"\bwith (?:some )?traffic\b|\bhave traffic\b|\bgot traffic\b"),
@@ -29,6 +36,7 @@ def _tokens(text):
     t = text.lower().replace("\u2019", "'")
     t = re.sub(r"\b(?:x|ex)[- ]?ray\b", "xray", t)
     t = re.sub(r"(\w)'s\b", r"\1", t)  # "Six's X-ray" -> "six xray"
+    t = re.sub(r"\b(\w+)'(m|re|ve|ll|d|t)\b", r"\1\2", t)  # "I'm" is a word, not the letters I and M
     # punctuation stays as a token so "K5AB, Mike" doesn't become K5ABM
     return re.findall(r"[a-z0-9]+|[,.;:!?]", t)
 
@@ -42,7 +50,7 @@ def _chars(tok):
     if re.fullmatch(r"[a-z]|[0-9]+", tok):
         return tok.upper()
     # Whisper often writes the call itself, like "k5abc"
-    if re.fullmatch(r"[a-z]{1,2}[0-9][a-z]{1,3}", tok):
+    if re.fullmatch(r"(?:[a-z]{1,2}|[a-z][0-9]|[0-9][a-z])[0-9][a-z]{1,3}", tok):
         return tok.upper()
     return None
 
@@ -66,7 +74,7 @@ def extract_calls(text):
         i = 0
         while i < len(run):
             match = None
-            for end in range(min(len(run), i + 6), i + 2, -1):  # longest first
+            for end in range(min(len(run), i + 7), i + 2, -1):  # longest first
                 if CALL_RE.match(run[i:end]):
                     match = run[i:end]
                     break
@@ -123,6 +131,10 @@ def resolve(call, known):
     Only when exactly one known call fits, and it shares the prefix and digit."""
     if not call or call in known:
         return call
+    # One stray letter glued on the front ("Mike K5ABC" -> MK5ABC) of a call we know
+    extra = [k for k in known if len(k) == len(call) - 1 and call.endswith(k)]
+    if len(extra) == 1:
+        return extra[0]
     m = re.match(r"[A-Z]+[0-9]", call)
     head = m.group(0) if m else call[:2]
     fits = [k for k in known if len(k) > len(call) and k.startswith(head) and _subsequence(call, k)]

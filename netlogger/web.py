@@ -10,12 +10,13 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 
 from . import __version__, ami, audio, auth, config, db, license, netlog, schedule
-from .parser import extract_calls
+from .parser import extract_calls, is_us
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     "Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
                                 "font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"),
 }
@@ -45,7 +46,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        for k, v in {**SECURITY_HEADERS, **(headers or {})}.items():
+        extra = {"Strict-Transport-Security": "max-age=31536000"} if config.COOKIE_SECURE else {}  # HTTPS only
+        for k, v in {**SECURITY_HEADERS, **extra, **(headers or {})}.items():
             self.send_header(k, v)
         self.end_headers()
         if self.command != "HEAD":
@@ -150,10 +152,16 @@ def auth_setup(h):
         need(call, 400, "Enter your callsign.")
     need(not auth.username_problem(username), 400, auth.username_problem(username) or "")
     need(not auth.password_problem(b.get("password")), 400, auth.password_problem(b.get("password")) or "")
-    result = check_license(call) if config.REQUIRE_LICENSE else None
+    need(not call or license.CALL_FORMAT.match(call), 400, "That doesn't look like a callsign.")
+    result, verified_by = None, None
+    if config.REQUIRE_LICENSE and not is_us(call):
+        # No one else can confirm the first admin, and the FCC lookup can't check other countries
+        result, verified_by = {"call": call}, "self"
+    elif config.REQUIRE_LICENSE:
+        result, verified_by = check_license(call), "callook"
     uid = auth.create_user(username, b["password"], "admin")
     if result:
-        auth.save_license(uid, result, "callook")
+        auth.save_license(uid, result, verified_by)
     token = auth.new_session(uid)
     print(f"admin account {username!r} created" + (f" for {result['call']}" if result else ""), flush=True)
     h.send(200, {"user": auth.public(auth.get_user(uid))}, headers={"Set-Cookie": auth.cookie(token)})
@@ -207,6 +215,8 @@ def me_license(h):
     call = license.normalize(b.get("callsign"))
     need(call, 400, "Enter your callsign.")
     need(not auth.callsign_taken(call, u["id"]), 409, f"{call} is already on another account.")
+    need(is_us(call) or not license.CALL_FORMAT.match(call), 400,
+         f"{call} is licensed outside the US. Ask your logger admin to confirm your license.")
     auth.save_license(u["id"], check_license(call), "callook")
     h.send(200, {"user": auth.public(auth.get_user(u["id"]))})
 
@@ -235,6 +245,9 @@ def users_create(h):
         need(license.CALL_FORMAT.match(call), 400, "That doesn't look like a callsign.")
         result, verified_by = {"call": call}, f"admin:{me['username']}"
     elif call:
+        need(is_us(call) or not license.CALL_FORMAT.match(call), 400,
+             f"{call} is licensed outside the US, so it can't be checked automatically. "
+             "Confirm their license yourself, then tick \"I checked this license myself\".")
         result, verified_by = check_license(call), "callook"
     uid = auth.create_user(username, b["password"], b["role"])
     if result:
@@ -319,7 +332,7 @@ def checkin_add(h):
     net = netlog.open_net()
     need(net, 400, "Open a net first.")
     calls = extract_calls(str(b.get("call", "")).upper())
-    need(calls, 400, "That's not a valid US callsign.")
+    need(calls, 400, "That doesn't look like a callsign.")
     netlog.add_checkin(net["id"], calls[0], [], "manual")
     h.send(200, {})
 
@@ -338,7 +351,7 @@ def checkin_update(h, cid):
         return h.send(200, {})
     if "call" in b:
         calls = extract_calls(str(b["call"]).upper())
-        need(calls, 400, "That's not a valid US callsign.")
+        need(calls, 400, "That doesn't look like a callsign.")
         need(not db.q("SELECT 1 FROM checkins WHERE call=? AND id<>? AND net_id=?", (calls[0], cid, row["net_id"]), one=True),
              400, f"{calls[0]} is already checked in.")
         info = netlog.lookup(calls[0])

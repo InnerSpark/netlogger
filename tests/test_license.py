@@ -7,12 +7,12 @@ from tests.conftest import Client
 def test_check_results():
     assert license.check("w6abc")["ok"] and license.check("W6ABC")["class"] == "Extra"
     assert "expired" in license.check("KE5OLD")["reason"]
-    assert "isn't an active license" in license.check("K1NOPE")["reason"]
+    assert "isn't an active license" in license.check("K1NOP")["reason"]
     assert "doesn't look like" in license.check("hello world!")["reason"]
 
 
 def test_setup_needs_real_license(client, fake_callook):
-    assert client.post("/api/auth/setup", {"callsign": "K1NOPE", "password": "correct horse"})[0] == 400
+    assert client.post("/api/auth/setup", {"callsign": "K1NOP", "password": "correct horse"})[0] == 400
     assert client.post("/api/auth/setup", {"callsign": "KE5OLD", "password": "correct horse"})[0] == 400
     fake_callook["down"] = True
     code, body = client.post("/api/auth/setup", {"callsign": "W6ABC", "password": "correct horse"})
@@ -23,7 +23,7 @@ def test_setup_needs_real_license(client, fake_callook):
 
 
 def test_admin_adds_users(admin, server, fake_callook):
-    assert admin.post("/api/users", {"callsign": "K1NOPE", "password": "operator pass", "role": "operator"})[0] == 400
+    assert admin.post("/api/users", {"callsign": "K1NOP", "password": "operator pass", "role": "operator"})[0] == 400
     # non-US or lookup down: admin vouches for it
     code, body = admin.post("/api/users", {"callsign": "VE3XYZ", "password": "operator pass", "role": "operator", "manual": True})
     assert code == 200
@@ -39,7 +39,7 @@ def test_existing_account_without_call_must_verify(server):
     assert c.post("/api/auth/login", {"username": "legacy", "password": "correct horse"})[0] == 200
     assert c.get("/api/auth/status")[1]["user"]["license_ok"] is False
     assert c.get("/api/state")[0] == 403           # locked out of the dashboard
-    assert c.post("/api/me/license", {"callsign": "K1NOPE"})[0] == 400
+    assert c.post("/api/me/license", {"callsign": "K1NOP"})[0] == 400
     assert c.post("/api/me/license", {"callsign": "K5OPR"})[0] == 200
     assert c.get("/api/state")[0] == 200
 
@@ -86,3 +86,16 @@ def test_migrates_1_0_database(tmp_path):
     db.connect(old)
     u = db.q("SELECT * FROM users WHERE id=1", one=True)
     assert u["username"] == "admin" and u["callsign"] is None and "verified_by" in u
+
+
+def test_non_us_calls(client, server, fake_callook):
+    r = license.check("VE3XYZ")
+    assert not r["ok"] and r["non_us"] and "outside the US" in r["reason"]
+    # first admin abroad: accepted as entered, since no one else can confirm it
+    code, body = client.post("/api/auth/setup", {"callsign": "g4abc", "password": "correct horse"})
+    assert code == 200 and body["user"]["callsign"] == "G4ABC" and body["user"]["verified_by"] == "self"
+    assert body["user"]["license_ok"]
+    # adding a non-US operator without vouching says how
+    code, body = client.post("/api/users", {"callsign": "DL1AB", "password": "operator pass", "role": "operator"})
+    assert code == 400 and "I checked this license myself" in body["error"]
+    assert client.post("/api/users", {"callsign": "DL1AB", "password": "operator pass", "role": "operator", "manual": True})[0] == 200

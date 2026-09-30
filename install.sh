@@ -19,7 +19,7 @@ DATA_DIR=/var/lib/netlogger
 ETC_DIR=/etc/netlogger
 ENV_FILE=$ETC_DIR/netlogger.env
 UNIT=/etc/systemd/system/netlogger.service
-WEB_DIST_URL="https://github.com/InnerSpark/netlogger/releases/latest/download/web-dist.tgz"
+CMD=/usr/local/bin/netlogger
 
 AST=/etc/asterisk
 LOGGER_NODE=""
@@ -217,7 +217,12 @@ id netlogger >/dev/null 2>&1 || useradd --system --home "$DATA_DIR" --shell /usr
 mkdir -p "$APP_DIR" "$DATA_DIR" "$ETC_DIR"
 chown netlogger:netlogger "$DATA_DIR"
 
+VERSION="$(sed -nE 's/^__version__ = "(.*)"/\1/p' "$SRC_DIR/netlogger/__init__.py")"
+WEB_DIST_URL="https://github.com/InnerSpark/netlogger/releases/download/v$VERSION/web-dist.tgz"
+
 if [ "$SRC_DIR" != "$APP_DIR" ]; then
+  # No dashboard build in the source (a plain git checkout): drop the old one so it matches this version
+  [ -f "$SRC_DIR/web/dist/index.html" ] || rm -rf "$APP_DIR/web/dist"
   tar -C "$SRC_DIR" --exclude=.git --exclude=web/node_modules --exclude=.venv --exclude=data -cf - . | tar -C "$APP_DIR" -xf -
 fi
 
@@ -225,6 +230,21 @@ python3 -m venv "$APP_DIR/.venv"
 "$APP_DIR/.venv/bin/pip" install -q --upgrade pip
 "$APP_DIR/.venv/bin/pip" install -q -r "$APP_DIR/requirements.txt"
 ok "Python packages installed"
+
+# `sudo netlogger reset-password <call>` and `sudo netlogger backup`
+cat > "$CMD" <<EOF
+#!/bin/sh
+# Net Logger maintenance commands. Runs as the netlogger user with its settings.
+[ "\$(id -u)" = 0 ] || { echo "Run with sudo: sudo netlogger \$*"; exit 1; }
+[ \$# -gt 0 ] || set -- help  # the service runs the logger itself
+exec runuser -u netlogger -- sh -c 'set -a; . $ENV_FILE; set +a; cd $APP_DIR && exec $APP_DIR/.venv/bin/python -m netlogger "\$@"' netlogger "\$@"
+EOF
+chmod 755 "$CMD"
+
+# Upgrading: keep a copy of the net logs first
+if [ -f "$DATA_DIR/netlog.db" ] && [ -f "$ENV_FILE" ]; then
+  "$CMD" backup >/dev/null && ok "backed up net logs to $DATA_DIR/backups/"
+fi
 
 # Dashboard: use a prebuilt copy, build it if Node 20+ is here, or download the release build
 if [ ! -f "$APP_DIR/web/dist/index.html" ]; then

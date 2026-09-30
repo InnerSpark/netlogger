@@ -15,6 +15,19 @@ from netlogger.parser import extract_calls, extract_flags
     ("K5ABC and W5XYZ", ["K5ABC", "W5XYZ"]),
     ("Good evening everyone, this is net control.", []),
     ("I have one question for the group.", []),
+    # Outside the US
+    ("Victor Echo Three Alpha Bravo Charlie in Ontario", ["VE3ABC"]),
+    ("This is G4XYZ, portable in Wales", ["G4XYZ"]),
+    ("Mike Zero Alpha Bravo Charlie", ["M0ABC"]),
+    ("Two Echo Zero Delta Echo Foxtrot, foundation licence", ["2E0DEF"]),
+    ("Delta Lima One Alpha Bravo, guten Abend", ["DL1AB"]),
+    ("VK2ABC and ZL1XYZ", ["VK2ABC", "ZL1XYZ"]),
+    ("Nine Alpha One Alpha Alpha", ["9A1AA"]),
+    ("VE3ABC/P mobile", ["VE3ABC"]),
+    # Guards
+    ("I'm K5ABC, Dana", ["K5ABC"]),
+    ("W6UXD Mike in Leander", ["W6UXD"]),
+    ("Running the 4x4 on the F150 tonight", []),
 ])
 def test_calls(text, want):
     assert extract_calls(text) == want
@@ -48,5 +61,13 @@ def test_resolve_to_known_calls():
     assert resolve("W6X", known) == "W6UXD"          # dropped letter
     assert resolve("K5ABC", known) == "K5ABC"        # unknown stays as heard
     assert resolve("W6U", known | {"W6UAB"}) == "W6U"  # ambiguous: don't guess
+    assert resolve("MKE5KGX", known) == "KE5KGX"     # stray letter in front
+
     assert match_known("And five K G X.", known) == "KE5KGX"  # prefix lost entirely
     assert match_known("nothing useful here", known) is None
+
+
+def test_is_us():
+    from netlogger.parser import is_us
+    assert is_us("W6UXD") and is_us("KE5KGX") and is_us("AA1A") and is_us("KH6ABC")
+    assert not is_us("VE3ABC") and not is_us("G4XYZ") and not is_us("2E0DEF") and not is_us("VK2ABC")

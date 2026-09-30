@@ -6,7 +6,7 @@ def test_checkins_flow(admin):
     admin.post("/api/net/open", {"name": "Test Net"})
     netlog.log_text("Kilo Five Alpha Bravo Charlie, Dana, with traffic.", 2.0)
     netlog.log_text("Kilo Five Alpha Bravo Charlie, short time.", 2.0)  # same call: merge flags
-    assert admin.post("/api/checkin", {"call": "hello"})[1]["error"] == "That's not a valid US callsign."
+    assert admin.post("/api/checkin", {"call": "hello"})[1]["error"] == "That doesn't look like a callsign."
     assert admin.post("/api/checkin", {"call": "w5bo"})[0] == 200
     s = admin.get("/api/state")[1]
     assert [(c["call"], c["flags"]) for c in s["checkins"]] == [("K5ABC", "short_time,traffic"), ("W5BO", "")]
@@ -65,3 +65,16 @@ def test_clipped_call_snaps_to_known(admin, monkeypatch):
     s = admin.get("/api/state")[1]
     assert [c["call"] for c in s["checkins"]] == ["W6UXD"]
     assert s["heard"][0]["calls"] == "W6UXD"
+
+
+def test_calls_from_other_countries(admin, monkeypatch):
+    looked_up = []
+    import types
+    fake = types.SimpleNamespace(request=types.SimpleNamespace(urlopen=lambda *a, **k: looked_up.append(a)))
+    monkeypatch.setattr(netlog, "urllib", fake)  # only the logger's lookups, not the test client
+    admin.post("/api/net/open", {"name": "DX"})
+    netlog.log_text("Victor Echo Three Alpha Bravo Charlie, Toronto.", 2.0)
+    assert admin.post("/api/checkin", {"call": "g4xyz"})[0] == 200
+    calls = [(c["call"], c["valid"]) for c in admin.get("/api/state")[1]["checkins"]]
+    assert calls == [("VE3ABC", None), ("G4XYZ", None)]  # no "Not found": callook can't check them
+    assert looked_up == []
