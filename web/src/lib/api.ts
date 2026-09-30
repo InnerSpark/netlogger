@@ -35,7 +35,7 @@ export type User = {
 export type Net = { id: number; name: string; opened: number; closed: number | null };
 export type Checkin = {
   id: number; call: string; name: string; location: string; class: string;
-  valid: number | null; first_time: number; flags: string; recheck_done: number;
+  valid: number | null; first_time: number; flags: string; recheck_done: number; ts: number;
 };
 export type NetState = { net: Net | null; checkins: Checkin[]; heard: { ts: number; text: string; calls: string | null }[] };
 export type Link = { node: string; direction: string; connected_for: string; state: string };
@@ -48,3 +48,12 @@ export type SetupState = {
   node: { configured: boolean; reachable: boolean | null; error: string | null; links: Link[] };
   call_lookup: boolean; cookie_secure: boolean;
 };
+export type Schedule = {
+  id: number; name: string; repeat: "weekly" | "monthly" | "once";
+  weekday: number | null; week_of_month: number | null; date: string | null;
+  start: string; duration_min: number; node: string | null; disconnect_after: number;
+  tz: string; enabled: number; description: string; running_now: boolean; next_start: number | null;
+};
+export type NetSummary = Net & { schedule_id: number | null; schedule_name: string | null; checkin_count: number };
+export type Transmission = { ts: number; seconds: number; text: string; calls: string | null };
+export type NetDetail = { net: Net; checkins: Checkin[]; transmissions: Transmission[] };

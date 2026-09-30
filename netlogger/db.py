@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS transmissions (
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, pw_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin', 'operator')), created REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS schedules (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, repeat TEXT NOT NULL CHECK (repeat IN ('weekly','monthly','once')),
+  weekday INTEGER, week_of_month INTEGER, date TEXT, start TEXT NOT NULL, duration_min INTEGER NOT NULL,
+  node TEXT, disconnect_after INTEGER NOT NULL DEFAULT 1, tz TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1,
+  last_run REAL, created_by TEXT);
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created REAL NOT NULL, expires REAL NOT NULL);
@@ -46,6 +51,9 @@ def _migrate(conn):
                       ("license_verified", "REAL"), ("verified_by", "TEXT")]:
         if col not in have:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {kind}")
+    if "schedule_id" not in {r[1] for r in conn.execute("PRAGMA table_info(nets)")}:
+        conn.execute("ALTER TABLE nets ADD COLUMN schedule_id INTEGER")
+    conn.execute("CREATE INDEX IF NOT EXISTS transmissions_net ON transmissions(net_id)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_callsign ON users(callsign) WHERE callsign IS NOT NULL")
     conn.commit()
 

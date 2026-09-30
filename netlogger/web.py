@@ -1,5 +1,6 @@
 """HTTP API and static dashboard. Every /api route except /api/auth/* needs a login."""
 import csv
+import datetime
 import io
 import json
 import mimetypes
@@ -8,7 +9,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 
-from . import __version__, ami, audio, auth, config, db, license, netlog
+from . import __version__, ami, audio, auth, config, db, license, netlog, schedule
 from .parser import extract_calls
 
 SECURITY_HEADERS = {
@@ -272,9 +273,19 @@ def state(h):
     h.send(200, {"net": net, "checkins": rows, "heard": heard})
 
 
+def net_from_query(h):
+    """?net=<id> picks a past net; otherwise the open or most recent one."""
+    m = re.search(r"[?&]net=(\d+)", h.path)
+    if m:
+        net = db.q("SELECT * FROM nets WHERE id=?", (int(m.group(1)),), one=True)
+        need(net, 404, "No such net.")
+        return net
+    return netlog.current_or_last_net()
+
+
 def export_csv(h):
     h.user()
-    net = netlog.current_or_last_net()
+    net = net_from_query(h)
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(["#", "time", "call", "name", "location", "class", "flags", "first_time"])
@@ -339,6 +350,103 @@ def checkin_update(h, cid):
     if "recheck_done" in b:
         db.q("UPDATE checkins SET recheck_done=? WHERE id=?", (1 if b["recheck_done"] else 0, cid))
     h.send(200, {})
+
+
+# ---------- past nets ----------
+def nets_list(h):
+    h.user()
+    rows = db.q("""SELECT n.*, s.name AS schedule_name,
+                     (SELECT COUNT(*) FROM checkins c WHERE c.net_id = n.id) AS checkin_count
+                   FROM nets n LEFT JOIN schedules s ON s.id = n.schedule_id
+                   ORDER BY n.opened DESC LIMIT 500""")
+    h.send(200, {"nets": rows})
+
+
+def net_detail(h, nid):
+    h.user()
+    net = db.q("SELECT * FROM nets WHERE id=?", (int(nid),), one=True)
+    need(net, 404, "No such net.")
+    checkins = db.q("SELECT * FROM checkins WHERE net_id=? ORDER BY ts", (net["id"],))
+    tx = db.q("SELECT ts, seconds, text, calls FROM transmissions WHERE net_id=? ORDER BY id", (net["id"],))
+    h.send(200, {"net": net, "checkins": checkins, "transmissions": tx})
+
+
+def net_transcript(h, nid):
+    h.user()
+    net = db.q("SELECT * FROM nets WHERE id=?", (int(nid),), one=True)
+    need(net, 404, "No such net.")
+    lines = [f"{net['name']}", time.strftime("Opened %Y-%m-%d %H:%M", time.localtime(net["opened"])), ""]
+    for t in db.q("SELECT ts, text, calls FROM transmissions WHERE net_id=? ORDER BY id", (net["id"],)):
+        calls = f" [{t['calls']}]" if t["calls"] else ""
+        lines.append(f"{time.strftime('%H:%M:%S', time.localtime(t['ts']))}{calls} {t['text']}")
+    name = re.sub(r"[^A-Za-z0-9_-]+", "_", net["name"])
+    h.send(200, "\n".join(lines) + "\n", "text/plain; charset=utf-8",
+           {"Content-Disposition": f'attachment; filename="{name}-transcript.txt"'})
+
+
+# ---------- scheduled nets ----------
+def _schedule_fields(b):
+    """Validate a schedule from the dashboard. Returns the columns to save."""
+    name = str(b.get("name", "")).strip()[:80]
+    need(name, 400, "Give the net a name.")
+    repeat = b.get("repeat")
+    need(repeat in schedule.REPEATS, 400, "Pick how often it repeats.")
+    start = str(b.get("start", ""))
+    need(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", start), 400, "Start time looks wrong.")
+    try:
+        duration = int(b.get("duration_min", 60))
+    except (TypeError, ValueError):
+        duration = 0
+    need(5 <= duration <= 480, 400, "Length must be 5 minutes to 8 hours.")
+    node = str(b.get("node") or "").strip()
+    need(not node or ami.valid_node(node), 400, "Node numbers are 3 to 7 digits.")
+    tzname = str(b.get("tz") or "UTC")
+    need(schedule.tz(tzname).key == tzname or tzname == "UTC", 400, "Unknown time zone.")
+    f = {"name": name, "repeat": repeat, "start": start, "duration_min": duration, "node": node or None,
+         "disconnect_after": 1 if b.get("disconnect_after", True) else 0, "tz": tzname,
+         "weekday": None, "week_of_month": None, "date": None}
+    if repeat in ("weekly", "monthly"):
+        need(b.get("weekday") in range(7), 400, "Pick a day of the week.")
+        f["weekday"] = b["weekday"]
+    if repeat == "monthly":
+        need(b.get("week_of_month") in (1, 2, 3, 4, -1), 400, "Pick which week of the month.")
+        f["week_of_month"] = b["week_of_month"]
+    if repeat == "once":
+        try:
+            d = datetime.date.fromisoformat(str(b.get("date")))
+        except ValueError:
+            raise HTTPError(400, "Pick a date.")
+        f["date"] = d.isoformat()
+    return f
+
+
+def schedules_list(h):
+    h.user()
+    h.send(200, {"schedules": [schedule.public(s) for s in db.q("SELECT * FROM schedules ORDER BY enabled DESC, name")]})
+
+
+def schedule_create(h):
+    u = h.user()
+    f = _schedule_fields(h.json_body())
+    cols = ", ".join(f) + ", created_by"
+    db.insert(f"INSERT INTO schedules ({cols}) VALUES ({', '.join('?' * (len(f) + 1))})",
+              (*f.values(), u["callsign"] or u["username"]))
+    schedules_list(h)
+
+
+def schedule_update(h, sid):
+    h.user()
+    sid = int(sid)
+    need(db.q("SELECT 1 FROM schedules WHERE id=?", (sid,), one=True), 404, "No such schedule.")
+    b = h.json_body()
+    if b.get("delete"):
+        db.q("DELETE FROM schedules WHERE id=?", (sid,))
+    elif set(b) == {"enabled"}:
+        db.q("UPDATE schedules SET enabled=? WHERE id=?", (1 if b["enabled"] else 0, sid))
+    else:
+        f = _schedule_fields(b)
+        db.q(f"UPDATE schedules SET {', '.join(k + '=?' for k in f)}, last_run=NULL WHERE id=?", (*f.values(), sid))
+    schedules_list(h)
 
 
 # ---------- node control ----------
@@ -406,6 +514,12 @@ ROUTES = [
     ("POST", r"/api/users/(\d+)", users_update),
     ("GET", r"/api/state", state),
     ("GET", r"/api/export\.csv", export_csv),
+    ("GET", r"/api/nets", nets_list),
+    ("GET", r"/api/nets/(\d+)", net_detail),
+    ("GET", r"/api/nets/(\d+)/transcript\.txt", net_transcript),
+    ("GET", r"/api/schedules", schedules_list),
+    ("POST", r"/api/schedules", schedule_create),
+    ("POST", r"/api/schedules/(\d+)", schedule_update),
     ("POST", r"/api/net/open", net_open),
     ("POST", r"/api/net/close", net_close),
     ("POST", r"/api/checkin", checkin_add),

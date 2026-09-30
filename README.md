@@ -18,6 +18,8 @@ Net Logger listens to your AllStar node, turns each transmission into text, and 
 - **First-timer tag:** calls never logged before, so net control can welcome them.
 - **Node control:** connect the logger to any AllStar node and disconnect it from the dashboard.
 - **Accounts:** an admin plus as many net control operators as you need.
+- **Scheduled nets:** weekly, monthly (first to last weekday) or one time. The net opens, links the node, and closes on its own.
+- **Past nets:** every net's roster and full transcript, searchable, with CSV and text downloads.
 - **CSV export** after the net.
 - **Works on a phone:** big tap targets, light and dark mode, screen reader friendly.
 
@@ -86,6 +88,14 @@ docker compose down        # stop it
 4. Flags set themselves from what's said. Click to change them.
 5. **Add check-in by hand** for anything missed.
 6. **Close net**, then **Export CSV**.
+
+### Scheduling a net
+
+Open **Nets** and click **Schedule a net**. Pick the day, start time, length and node. At start time the logger opens the net (named with the date), links the node in monitor mode, and closes it when the time is up. It unlinks the node afterward unless you turn that off. If a net is already open, the scheduled one is skipped. Times use the time zone of the browser that created the schedule.
+
+### Past nets
+
+**Nets** lists every net with its start, length and check-in count. Open one to see the roster and the full transcript (search by call or words), or download the CSV or transcript.
 
 ## Accounts
 
