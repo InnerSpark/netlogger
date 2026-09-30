@@ -45,6 +45,9 @@ TRUST_PROXY = _bool("TRUST_PROXY", False)
 CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "").strip()
 
 # Accounts
+# Dashboard accounts must belong to a licensed amateur (checked on callook.info, US calls)
+REQUIRE_LICENSE = _bool("REQUIRE_LICENSE", True)
+LICENSE_RECHECK_DAYS = _int("LICENSE_RECHECK_DAYS", 30)
 COOKIE_SECURE = _bool("COOKIE_SECURE", False)  # set when serving over HTTPS
 SESSION_DAYS = _int("SESSION_DAYS", 30)
 

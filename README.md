@@ -89,10 +89,15 @@ docker compose down        # stop it
 
 ## Accounts
 
-- The first person to open the dashboard creates the **admin** account.
-- Admins add users on the **Users** page. **Operators** run nets and connect nodes. **Admins** also manage users.
+Net Logger is for licensed amateur radio operators.
+
+- The first person to open the dashboard creates the **admin** account with their **callsign**. It's checked against the FCC license database (via [callook.info](https://callook.info)); unknown or expired licenses are refused.
+- Admins add users on the **Users** page by callsign. **Operators** run nets and connect nodes. **Admins** also manage users.
+- **Non-US hams:** callook.info only covers US licenses, so an admin ticks **"I checked this license myself"** when adding them. The same box works if the FCC lookup is down.
+- Licenses are **re-checked every 30 days** at login. An expired license loses access until a current callsign is verified.
 - Passwords are at least 10 characters and stored as scrypt hashes. Changing or resetting a password logs that account out everywhere else.
 - Five wrong passwords in a row from one address slows further tries down.
+- To run without license checks (a club demo, say), set `REQUIRE_LICENSE=0`.
 
 ## Security
 

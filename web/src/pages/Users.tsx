@@ -60,18 +60,29 @@ export function Users({ me }: { me: User }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead scope="col" className="pl-4">Username</TableHead>
+                  <TableHead scope="col" className="pl-4">Callsign</TableHead>
+                  <TableHead scope="col">Name</TableHead>
+                  <TableHead scope="col">Username</TableHead>
                   <TableHead scope="col">Role</TableHead>
+                  <TableHead scope="col">License</TableHead>
                   <TableHead scope="col" className="pr-4"><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((u) => (
                   <TableRow key={u.id}>
-                    <TableCell className="pl-4 font-medium">
-                      {u.username}{u.id === me.id && <span className="ml-2 text-muted-foreground">(you)</span>}
+                    <TableCell className="pl-4 font-mono font-semibold">
+                      {u.callsign || "-"}{u.id === me.id && <span className="ml-2 font-sans font-normal text-muted-foreground">(you)</span>}
                     </TableCell>
+                    <TableCell>{u.license_name}{u.license_class && <span className="text-muted-foreground"> · {u.license_class}</span>}</TableCell>
+                    <TableCell>{u.username}</TableCell>
                     <TableCell><Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role === "admin" ? "Admin" : "Operator"}</Badge></TableCell>
+                    <TableCell>
+                      {!u.license_ok ? <Badge variant="destructive">Not verified</Badge>
+                        : u.verified_by === "callook" ? <span className="text-muted-foreground">FCC checked</span>
+                        : u.verified_by ? <span className="text-muted-foreground">Checked by {u.verified_by.replace("admin:", "")}</span>
+                        : <span className="text-muted-foreground">Not required</span>}
+                    </TableCell>
                     <TableCell className="pr-4">
                       <div className="flex justify-end gap-1">
                         {u.id !== me.id && (
@@ -83,7 +94,7 @@ export function Users({ me }: { me: User }) {
                         )}
                         <ResetPassword user={u} onDone={(msg) => { setAnnounce(msg); load(); }} />
                         {u.id !== me.id && (
-                          <DeleteUser user={u} onConfirm={() => update(u, { delete: true }, `${u.username} deleted.`)} returnFocus={heading} />
+                          <DeleteUser user={u} onConfirm={() => update(u, { delete: true }, `${u.callsign || u.username} deleted.`)} returnFocus={heading} />
                         )}
                       </div>
                     </TableCell>
@@ -101,25 +112,29 @@ export function Users({ me }: { me: User }) {
 }
 
 function AddUser({ onAdded }: { onAdded: (users: User[], name: string) => void }) {
+  const [callsign, setCallsign] = useState("");
+  const [manual, setManual] = useState(false);
+  const callRef = useRef<HTMLInputElement>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"operator" | "admin">("operator");
   const [error, setError] = useState("");
   const userRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
-  const field = error.startsWith("Password") ? "password" : error ? "username" : null;
+  const field = !error ? null : error.startsWith("Password") ? "password"
+    : error.startsWith("Username") || error.includes("username") ? "username" : "callsign";
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const r = await post<{ users: User[] }>("/api/users", { username: username.trim(), password, role });
-      onAdded(r.users, username.trim());
-      setUsername(""); setPassword(""); setRole("operator"); setError("");
-      userRef.current?.focus();
+      const r = await post<{ users: User[] }>("/api/users", { callsign: callsign.trim(), username: username.trim(), password, role, manual });
+      onAdded(r.users, callsign.trim().toUpperCase() || username.trim());
+      setCallsign(""); setUsername(""); setPassword(""); setRole("operator"); setManual(false); setError("");
+      callRef.current?.focus();
     } catch (err) {
       const msg = (err as Error).message;
       setError(msg);
-      (msg.startsWith("Password") ? passRef : userRef).current?.focus();
+      (msg.startsWith("Password") ? passRef : msg.startsWith("Username") || msg.includes("username") ? userRef : callRef).current?.focus();
     }
   };
 
@@ -127,15 +142,27 @@ function AddUser({ onAdded }: { onAdded: (users: User[], name: string) => void }
     <Card className="gap-4 self-start">
       <CardHeader>
         <CardTitle>Add a user</CardTitle>
-        <CardDescription>Give them the password. They can change it after they log in.</CardDescription>
+        <CardDescription>Their callsign is checked against the FCC license database. Give them the password; they can change it after they log in.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-username">Username</Label>
+            <Label htmlFor="new-callsign">Callsign</Label>
+            <Input ref={callRef} id="new-callsign" autoComplete="off" autoCapitalize="characters" spellCheck={false}
+              value={callsign} onChange={(e) => setCallsign(e.target.value)} className="font-mono uppercase max-md:h-11"
+              aria-invalid={field === "callsign" || undefined} aria-describedby="new-user-error" />
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" checked={manual} onChange={(e) => setManual(e.target.checked)}
+                className="mt-0.5 size-4 accent-primary" />
+              <span>I checked this license myself <span className="text-muted-foreground">(non-US calls, or when the FCC lookup is down)</span></span>
+            </label>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-username">Username (optional)</Label>
             <Input ref={userRef} id="new-username" autoComplete="off" autoCapitalize="none" spellCheck={false}
               value={username} onChange={(e) => setUsername(e.target.value)} className="max-md:h-11"
-              aria-invalid={field === "username" || undefined} aria-describedby="new-user-error" />
+              aria-invalid={field === "username" || undefined} aria-describedby="new-user-hint new-user-error" />
+            <p id="new-user-hint" className="text-sm text-muted-foreground">Leave blank to use their callsign.</p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-password">Temporary password</Label>

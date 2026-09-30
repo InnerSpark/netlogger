@@ -8,7 +8,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 
-from . import __version__, ami, audio, auth, config, db, netlog
+from . import __version__, ami, audio, auth, config, db, license, netlog
 from .parser import extract_calls
 
 SECURITY_HEADERS = {
@@ -76,9 +76,11 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             raise HTTPError(400, "Bad JSON.")
 
-    def user(self, admin=False):
+    def user(self, admin=False, allow_unlicensed=False):
         u = auth.session_user(self.token())
         need(u, 401, "Please log in.")
+        if not allow_unlicensed:
+            need(auth.license_ok(u), 403, "Verify your amateur license to continue.")
         if admin:
             need(u["role"] == "admin", 403, "Admins only.")
         return u
@@ -124,17 +126,35 @@ class Handler(BaseHTTPRequestHandler):
 # ---------- auth ----------
 def auth_status(h):
     return h.send(200, {"setup_needed": auth.user_count() == 0,
+                        "require_license": config.REQUIRE_LICENSE,
                         "user": auth.public(auth.session_user(h.token()))})
+
+
+def check_license(call):
+    """license.check, turned into HTTP errors. Returns the result when the license is good."""
+    try:
+        r = license.check(call)
+    except license.LookupUnavailable:
+        raise HTTPError(503, "Can't reach the FCC lookup (callook.info) right now. Try again in a minute.")
+    need(r["ok"], 400, r["reason"])
+    return r
 
 
 def auth_setup(h):
     b = h.json_body()
     need(auth.user_count() == 0, 409, "Setup is already done. Log in instead.")
-    need(not auth.username_problem(b.get("username")), 400, auth.username_problem(b.get("username")) or "")
+    call = license.normalize(b.get("callsign"))
+    username = (b.get("username") or "").strip() or call.lower()
+    if config.REQUIRE_LICENSE:
+        need(call, 400, "Enter your callsign.")
+    need(not auth.username_problem(username), 400, auth.username_problem(username) or "")
     need(not auth.password_problem(b.get("password")), 400, auth.password_problem(b.get("password")) or "")
-    uid = auth.create_user(b["username"], b["password"], "admin")
+    result = check_license(call) if config.REQUIRE_LICENSE else None
+    uid = auth.create_user(username, b["password"], "admin")
+    if result:
+        auth.save_license(uid, result, "callook")
     token = auth.new_session(uid)
-    print(f"admin account {b['username']!r} created", flush=True)
+    print(f"admin account {username!r} created" + (f" for {result['call']}" if result else ""), flush=True)
     h.send(200, {"user": auth.public(auth.get_user(uid))}, headers={"Set-Cookie": auth.cookie(token)})
 
 
@@ -147,6 +167,18 @@ def auth_login(h):
         auth.record_fail(h.client())
         raise HTTPError(401, "Wrong username or password.")
     auth.record_ok(h.client())
+    if config.REQUIRE_LICENSE and license.stale(u):
+        # Periodic re-check. If the lookup is down, let them in and try next time.
+        try:
+            r = license.check(u["callsign"])
+            if r["ok"]:
+                auth.save_license(u["id"], r, "callook")
+            else:
+                db.q("UPDATE users SET verified_by=NULL WHERE id=?", (u["id"],))
+                print(f"{u['username']}: license check failed at login: {r['reason']}", flush=True)
+        except license.LookupUnavailable:
+            pass
+        u = auth.get_user(u["id"])
     token = auth.new_session(u["id"])
     h.send(200, {"user": auth.public(u)}, headers={"Set-Cookie": auth.cookie(token)})
 
@@ -158,13 +190,24 @@ def auth_logout(h):
 
 
 def me_password(h):
-    u = h.user()
+    u = h.user(allow_unlicensed=True)
     b = h.json_body()
     need(auth.verify_password(b.get("current") or "", u["pw_hash"]), 400, "Current password is wrong.")
     need(not auth.password_problem(b.get("new")), 400, auth.password_problem(b.get("new")) or "")
     db.q("UPDATE users SET pw_hash=? WHERE id=?", (auth.hash_password(b["new"]), u["id"]))
     auth.end_user_sessions(u["id"], keep_token=h.token())  # sign out other devices
     h.send(200, {})
+
+
+def me_license(h):
+    """Verify (or re-verify) the logged-in user's own license."""
+    u = h.user(allow_unlicensed=True)
+    b = h.json_body()
+    call = license.normalize(b.get("callsign"))
+    need(call, 400, "Enter your callsign.")
+    need(not auth.callsign_taken(call, u["id"]), 409, f"{call} is already on another account.")
+    auth.save_license(u["id"], check_license(call), "callook")
+    h.send(200, {"user": auth.public(auth.get_user(u["id"]))})
 
 
 # ---------- users (admin) ----------
@@ -174,14 +217,27 @@ def users_list(h):
 
 
 def users_create(h):
-    h.user(admin=True)
+    me = h.user(admin=True)
     b = h.json_body()
-    need(not auth.username_problem(b.get("username")), 400, auth.username_problem(b.get("username")) or "")
+    call = license.normalize(b.get("callsign"))
+    username = (b.get("username") or "").strip() or call.lower()
+    if config.REQUIRE_LICENSE:
+        need(call, 400, "Enter their callsign.")
+    need(not auth.username_problem(username), 400, auth.username_problem(username) or "")
     need(not auth.password_problem(b.get("password")), 400, auth.password_problem(b.get("password")) or "")
     need(b.get("role") in auth.ROLES, 400, "Role must be admin or operator.")
-    need(not db.q("SELECT 1 FROM users WHERE username=?", (b["username"].strip(),), one=True),
-         409, "That username is taken.")
-    auth.create_user(b["username"], b["password"], b["role"])
+    need(not db.q("SELECT 1 FROM users WHERE username=?", (username,), one=True), 409, "That username is taken.")
+    need(not (call and auth.callsign_taken(call)), 409, f"{call} is already on another account.")
+    result, verified_by = None, None
+    if call and b.get("manual"):
+        # Admin checked it themselves: non-US license, or the FCC lookup is down
+        need(license.CALL_FORMAT.match(call), 400, "That doesn't look like a callsign.")
+        result, verified_by = {"call": call}, f"admin:{me['username']}"
+    elif call:
+        result, verified_by = check_license(call), "callook"
+    uid = auth.create_user(username, b["password"], b["role"])
+    if result:
+        auth.save_license(uid, result, verified_by)
     h.send(200, {"users": auth.list_users()})
 
 
@@ -344,6 +400,7 @@ ROUTES = [
     ("POST", r"/api/auth/login", auth_login),
     ("POST", r"/api/auth/logout", auth_logout),
     ("POST", r"/api/me/password", me_password),
+    ("POST", r"/api/me/license", me_license),
     ("GET", r"/api/users", users_list),
     ("POST", r"/api/users", users_create),
     ("POST", r"/api/users/(\d+)", users_update),

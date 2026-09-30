@@ -19,13 +19,14 @@ def test_everything_needs_login(client):
 def test_first_run_setup_then_locked(client, server):
     code, body = client.get("/api/auth/status")
     assert body["setup_needed"] is True and body["user"] is None
-    assert client.post("/api/auth/setup", {"username": "ncs", "password": "short"})[0] == 400
-    code, body = client.post("/api/auth/setup", {"username": "ncs", "password": "correct horse"})
-    assert code == 200 and body["user"]["role"] == "admin"
+    assert client.post("/api/auth/setup", {"username": "ncs", "callsign": "W6ABC", "password": "short"})[0] == 400
+    assert client.post("/api/auth/setup", {"username": "ncs", "password": "correct horse"})[0] == 400  # no call
+    code, body = client.post("/api/auth/setup", {"username": "ncs", "callsign": "W6ABC", "password": "correct horse"})
+    assert code == 200 and body["user"]["role"] == "admin" and body["user"]["license_ok"]
     assert client.get("/api/state")[0] == 200
     # second setup is refused
     other = Client(server)
-    assert other.post("/api/auth/setup", {"username": "evil", "password": "correct horse"})[0] == 409
+    assert other.post("/api/auth/setup", {"username": "evil", "callsign": "K5OPR", "password": "correct horse"})[0] == 409
 
 
 def test_login_logout_and_throttle(admin, server):
@@ -45,9 +46,9 @@ def test_json_only_posts(admin):
 
 
 def test_user_management(admin, server):
-    code, body = admin.post("/api/users", {"username": "kilo", "password": "operator pass", "role": "operator"})
+    code, body = admin.post("/api/users", {"username": "kilo", "callsign": "K5OPR", "password": "operator pass", "role": "operator"})
     assert code == 200 and {u["username"] for u in body["users"]} == {"ncs", "kilo"}
-    assert admin.post("/api/users", {"username": "KILO", "password": "operator pass", "role": "operator"})[0] == 409
+    assert admin.post("/api/users", {"username": "KILO", "callsign": "K5OPR", "password": "operator pass", "role": "operator"})[0] == 409
     op = Client(server)
     assert op.post("/api/auth/login", {"username": "kilo", "password": "operator pass"})[0] == 200
     assert op.get("/api/users")[0] == 403  # operators can't manage users
