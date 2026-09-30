@@ -35,7 +35,19 @@ def connect(path=None):
     _conn.row_factory = sqlite3.Row
     _conn.execute("PRAGMA foreign_keys = ON")
     _conn.executescript(SCHEMA)
+    _migrate(_conn)
     return _conn
+
+
+def _migrate(conn):
+    """Add columns introduced after 1.0.0 to existing databases."""
+    have = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
+    for col, kind in [("callsign", "TEXT"), ("license_name", "TEXT"), ("license_class", "TEXT"),
+                      ("license_verified", "REAL"), ("verified_by", "TEXT")]:
+        if col not in have:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {kind}")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_callsign ON users(callsign) WHERE callsign IS NOT NULL")
+    conn.commit()
 
 
 def q(sql, args=(), one=False):

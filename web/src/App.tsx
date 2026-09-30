@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Radio } from "lucide-react";
 import { get, post, setOnUnauthorized, type User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { AuthScreen } from "@/pages/AuthScreen";
+import { AuthScreen, VerifyLicense } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
 import { Users } from "@/pages/Users";
 import { Setup } from "@/pages/Setup";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
-type Status = { setup_needed: boolean; user: User | null };
+type Status = { setup_needed: boolean; require_license: boolean; user: User | null };
 type View = "dashboard" | "users" | "setup";
 
 const viewFromHash = (): View =>
@@ -66,10 +66,13 @@ export default function App() {
   }
   if (!status) return <main className="px-4 py-16 text-center text-muted-foreground">Loading…</main>;
   // After the first admin is created, land on the Setup page
-  if (status.setup_needed) return <AuthScreen mode="setup" onDone={() => { window.location.hash = "#/setup"; setView("setup"); load(); }} />;
+  if (status.setup_needed) return <AuthScreen mode="setup" requireLicense={status.require_license} onDone={() => { window.location.hash = "#/setup"; setView("setup"); load(); }} />;
   if (!status.user) return <AuthScreen mode="login" onDone={load} />;
 
   const user = status.user;
+  if (!user.license_ok) {
+    return <VerifyLicense user={user} onDone={load} onLogout={async () => { await post("/api/auth/logout").catch(() => {}); load(); }} />;
+  }
   const current: View = view === "users" && user.role !== "admin" ? "dashboard" : view;
 
   const logout = async () => {
@@ -104,7 +107,7 @@ export default function App() {
           </nav>
           <div className="ml-auto flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">
-              <span className="sr-only">Signed in as </span>{user.username}
+              <span className="sr-only">Signed in as </span>{user.callsign || user.username}
               <span className="sr-only">, {user.role}</span>
             </span>
             <PasswordDialog />

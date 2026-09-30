@@ -5,6 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ## [Unreleased]
 
 ### Added
+- Accounts require a current amateur license: callsign checked against the FCC database (callook.info) at setup and when adding users, re-checked every 30 days at login. Admins can vouch for non-US licenses. Older accounts verify once at next login. `REQUIRE_LICENSE=0` turns it off.
 - Audio cleanup before speech to text: removes DC and low rumble, levels quiet signals.
 - Whisper prompt includes the phonetic alphabet and calls this logger has seen, so it leans toward them.
 - `KNOWN_CALLS` setting for net regulars and net control.

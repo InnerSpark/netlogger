@@ -27,7 +27,11 @@ export const post = <T = unknown,>(url: string, body: unknown = {}) =>
     body: JSON.stringify(body),
   }).then((r) => handle<T>(r));
 
-export type User = { id: number; username: string; role: "admin" | "operator" };
+export type User = {
+  id: number; username: string; role: "admin" | "operator";
+  callsign: string | null; license_name: string | null; license_class: string | null;
+  verified_by: string | null; license_ok: boolean;
+};
 export type Net = { id: number; name: string; opened: number; closed: number | null };
 export type Checkin = {
   id: number; call: string; name: string; location: string; class: string;

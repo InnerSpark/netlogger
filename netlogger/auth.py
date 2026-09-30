@@ -43,8 +43,27 @@ def username_problem(name: str):
 
 
 # ---------- users ----------
+def license_ok(u):
+    return (not config.REQUIRE_LICENSE) or bool(u.get("callsign") and u.get("verified_by"))
+
+
 def public(u):
-    return {"id": u["id"], "username": u["username"], "role": u["role"]} if u else None
+    if not u:
+        return None
+    return {"id": u["id"], "username": u["username"], "role": u["role"],
+            "callsign": u.get("callsign"), "license_name": u.get("license_name"),
+            "license_class": u.get("license_class"), "verified_by": u.get("verified_by"),
+            "license_ok": license_ok(u)}
+
+
+def save_license(uid, result, verified_by):
+    db.q("""UPDATE users SET callsign=?, license_name=?, license_class=?, license_verified=?, verified_by=?
+            WHERE id=?""",
+         (result["call"], result.get("name", ""), result.get("class", ""), time.time(), verified_by, uid))
+
+
+def callsign_taken(call, except_id=None):
+    return bool(db.q("SELECT 1 FROM users WHERE callsign=? AND id<>?", (call, except_id or -1), one=True))
 
 
 def user_count():

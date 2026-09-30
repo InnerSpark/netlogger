@@ -93,6 +93,30 @@ def fake_ami(monkeypatch):
     srv.shutdown()
 
 
+# Stand-in for callook.info so tests never touch the network
+FAKE_LICENSES = {
+    "W6ABC": {"status": "VALID", "name": "PAT SAMPLE", "current": {"operClass": "EXTRA"},
+              "otherInfo": {"expiryDate": "01/01/2099"}},
+    "K5OPR": {"status": "VALID", "name": "SAM OPERATOR", "current": {"operClass": "GENERAL"},
+              "otherInfo": {"expiryDate": "01/01/2099"}},
+    "KE5OLD": {"status": "VALID", "name": "OLD TIMER", "current": {"operClass": "GENERAL"},
+               "otherInfo": {"expiryDate": "01/01/2001"}},
+}
+
+
+@pytest.fixture(autouse=True)
+def fake_callook(monkeypatch):
+    from netlogger import license
+    state = {"down": False}
+
+    def fetch(call):
+        if state["down"]:
+            raise license.LookupUnavailable("down")
+        return FAKE_LICENSES.get(call, {"status": "INVALID"})
+    monkeypatch.setattr(license, "fetch", fetch)
+    return state
+
+
 @pytest.fixture
 def server(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "CALL_LOOKUP", False)
@@ -147,6 +171,6 @@ def client(server):
 @pytest.fixture
 def admin(server):
     c = Client(server)
-    code, _ = c.post("/api/auth/setup", {"username": "ncs", "password": "correct horse"})
+    code, _ = c.post("/api/auth/setup", {"username": "ncs", "callsign": "W6ABC", "password": "correct horse"})
     assert code == 200
     return c
