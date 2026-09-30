@@ -129,7 +129,7 @@ Open `https://netlog.example.com` and **create the admin account right away**. U
 
 Logins only work over HTTPS in this setup (`COOKIE_SECURE=1`). To try it before the subdomain is ready, use an SSH tunnel: `ssh -L 8080:127.0.0.1:8080 you@server`, then open `http://localhost:8080`.
 
-The **Status** page then shows a live health check. **Audio from AllStar** turns to Done the first time the logger node hears a transmission.
+The **Health** page then shows a live health check. **Audio from AllStar** turns to Done the first time the logger node hears a transmission.
 
 ## Day to day
 

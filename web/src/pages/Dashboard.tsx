@@ -51,7 +51,7 @@ export function Dashboard({ admin }: { admin: boolean }) {
   const phone = useIsPhone();
   const [noAudio, setNoAudio] = useState(false);
 
-  // Nudge toward Setup until the logger has heard anything from AllStar
+  // Nudge toward Health until the logger has heard anything from AllStar
   useEffect(() => {
     get<SetupState>("/api/setup").then((s) => setNoAudio(!s.last_packet && !s.last_transmission)).catch(() => {});
   }, []);
@@ -136,11 +136,11 @@ export function Dashboard({ admin }: { admin: boolean }) {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/50 px-4 py-3">
           <p className="text-sm">
             <strong>Not hearing AllStar yet.</strong>{" "}
-            {admin ? "Finish hooking up your node to start logging from the air." : "Ask an admin to check the logger's Status page."}
+            {admin ? "Finish hooking up your node to start logging from the air." : "Ask an admin to check the logger's Health page."}
           </p>
           {admin && (
             <Button asChild size="sm" className="max-md:h-11">
-              <a href="#/status">Check Status<ArrowRight aria-hidden="true" /></a>
+              <a href="#/health">Check Health<ArrowRight aria-hidden="true" /></a>
             </Button>
           )}
         </div>

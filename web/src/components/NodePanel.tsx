@@ -66,7 +66,7 @@ export function NodePanel({ admin }: { admin: boolean }) {
           {s?.enabled
             ? <>Logger node {s.logger_node} listens in monitor mode. It never transmits.</>
             : admin
-              ? <>Node control is off. <a href="#/status" className="font-medium text-foreground underline underline-offset-4">See the setup guide, step 5</a>.</>
+              ? <>Node control is off. <a href="#/health" className="font-medium text-foreground underline underline-offset-4">See the setup guide, step 5</a>.</>
               : <>Node control is off. An admin can turn it on.</>}
         </CardDescription>
       </CardHeader>

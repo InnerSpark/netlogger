@@ -7,7 +7,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Added
 - Scheduled nets: weekly, monthly or one time. Opens the net, links the node in monitor mode, closes on time and unlinks. Dashboard shows the next one.
 - Stats page: check-ins per net chart, typical check-ins vs the previous period, stations heard, first-timers, regulars with attendance. Filter by range and scheduled net.
-- Setup page is now **Status**, admins only. When everything works it shows just the health check; the setup guide opens on its own when something breaks, with a link to the step that fixes it. Operators see only whether audio is arriving.
+- Setup page is now **Health**, admins only. When everything works it shows just the health check; the setup guide opens on its own when something breaks, with a link to the step that fixes it. Operators see only whether audio is arriving.
 - Nets page: past nets with roster, searchable transcript, CSV and transcript downloads.
 - Accounts require a current amateur license: callsign checked against the FCC database (callook.info) at setup and when adding users, re-checked every 30 days at login. Admins can vouch for non-US licenses. Older accounts verify once at next login. `REQUIRE_LICENSE=0` turns it off.
 - Audio cleanup before speech to text: removes DC and low rumble, levels quiet signals.

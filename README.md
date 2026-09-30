@@ -71,7 +71,7 @@ Either way you need an **AllStar node you control**. Anyone licensed can get a n
    ```
    The first start downloads the Whisper model (about 500 MB for `small.en`).
 4. **Open `http://<this-computer>:8080`** and create the admin account.
-5. **Follow the Status page.** After you create the admin account, the app opens a **Status** page (admins only) with a live health check and a setup guide and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
+5. **Follow the Health page.** After you create the admin account, the app opens a **Health** page (admins only) with a live health check and a setup guide and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
 
 Useful commands:
 
@@ -139,7 +139,7 @@ It splits the audio at pauses and sends each piece like a real transmission. Any
 
 **Nothing shows in Last heard**
 
-Start with the **Status** page in the app (admins only). Its health check shows whether audio is arriving and whether node control can reach your server.
+Start with the **Health** page in the app (admins only). Its health check shows whether audio is arriving and whether node control can reach your server.
 
 1. Logs: `journalctl -u netlogger -f` (installer) or `docker compose logs -f` (Docker). Do you see `[2.3s] ...` lines when someone keys up?
 2. Is the logger node linked? Check the **AllStar nodes** card, or on the AllStar server run `sudo asterisk -rx "rpt lstats 1999"`.

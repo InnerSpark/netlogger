@@ -5,20 +5,20 @@ import { Button } from "@/components/ui/button";
 import { AuthScreen, VerifyLicense } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
 import { Users } from "@/pages/Users";
-import { Status as StatusPage } from "@/pages/Status";
+import { Health } from "@/pages/Health";
 import { Stats } from "@/pages/Stats";
 import { Nets } from "@/pages/Nets";
 import { NetDetail } from "@/pages/NetDetail";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
 type Status = { setup_needed: boolean; require_license: boolean; user: User | null };
-type View = "dashboard" | "users" | "status" | "stats" | "nets" | `net-${number}`;
+type View = "dashboard" | "users" | "health" | "stats" | "nets" | `net-${number}`;
 
 const viewFromHash = (): View => {
   const h = window.location.hash;
   const m = h.match(/^#\/nets\/(\d+)$/);
   if (m) return `net-${Number(m[1])}`;
-  return h === "#/users" ? "users" : h === "#/status" || h === "#/setup" ? "status" : h === "#/nets" ? "nets" : h === "#/stats" ? "stats" : "dashboard";
+  return h === "#/users" ? "users" : ["#/health", "#/status", "#/setup"].includes(h) ? "health" : h === "#/nets" ? "nets" : h === "#/stats" ? "stats" : "dashboard";
 };
 
 export default function App() {
@@ -50,7 +50,7 @@ export default function App() {
   // Move focus to the page heading when the page changes or after logging in,
   // so screen readers announce where you landed
   const userId = status?.user?.id;
-  const shown = (view === "users" || view === "status") && status?.user?.role !== "admin" ? "dashboard" : view;
+  const shown = (view === "users" || view === "health") && status?.user?.role !== "admin" ? "dashboard" : view;
   const initial = useRef(true);
   const loaded = !!status;
   useEffect(() => {
@@ -72,15 +72,15 @@ export default function App() {
     );
   }
   if (!status) return <main className="px-4 py-16 text-center text-muted-foreground">Loading…</main>;
-  // After the first admin is created, land on the Setup page
-  if (status.setup_needed) return <AuthScreen mode="setup" requireLicense={status.require_license} onDone={() => { window.location.hash = "#/status"; setView("status"); load(); }} />;
+  // After the first admin is created, land on the Health page
+  if (status.setup_needed) return <AuthScreen mode="setup" requireLicense={status.require_license} onDone={() => { window.location.hash = "#/health"; setView("health"); load(); }} />;
   if (!status.user) return <AuthScreen mode="login" onDone={load} />;
 
   const user = status.user;
   if (!user.license_ok) {
     return <VerifyLicense user={user} onDone={load} onLogout={async () => { await post("/api/auth/logout").catch(() => {}); load(); }} />;
   }
-  const current: View = (view === "users" || view === "status") && user.role !== "admin" ? "dashboard" : view;
+  const current: View = (view === "users" || view === "health") && user.role !== "admin" ? "dashboard" : view;
 
   const logout = async () => {
     await post("/api/auth/logout").catch(() => {});
@@ -111,8 +111,8 @@ export default function App() {
             </Button>
             {user.role === "admin" && (
               <>
-                <Button asChild variant={current === "status" ? "secondary" : "ghost"} size="sm">
-                  <a href="#/status" aria-current={current === "status" ? "page" : undefined}>Status</a>
+                <Button asChild variant={current === "health" ? "secondary" : "ghost"} size="sm">
+                  <a href="#/health" aria-current={current === "health" ? "page" : undefined}>Health</a>
                 </Button>
                 <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm">
                   <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
@@ -132,7 +132,7 @@ export default function App() {
       </header>
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">
         {current === "users" ? <Users me={user} />
-          : current === "status" ? <StatusPage />
+          : current === "health" ? <Health />
           : current === "nets" ? <Nets />
           : current === "stats" ? <Stats />
           : current.startsWith("net-") ? <NetDetail key={current} id={Number(current.slice(4))} />

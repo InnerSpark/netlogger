@@ -22,7 +22,7 @@ function loggerAddress() {
   return h === "localhost" || h === "127.0.0.1" ? "<this logger's IP>" : h;
 }
 
-export function Status() {
+export function Health() {
   const [s, setS] = useState<SetupState | null>(null);
   const [error, setError] = useState("");
   const [announce, setAnnounce] = useState("");
@@ -108,7 +108,7 @@ export function Status() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Status</h1>
+        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Health</h1>
         <p className="text-muted-foreground">
           {!s ? "Checking the logger…" : healthy
             ? "Everything is working. This page updates on its own."
@@ -120,7 +120,7 @@ export function Status() {
 
       <Card className="gap-4">
         <CardHeader>
-          <CardTitle>Health</CardTitle>
+          <CardTitle>Checks</CardTitle>
         </CardHeader>
         <CardContent>
           {!s ? <p className="text-muted-foreground">Loading…</p> : (
@@ -135,7 +135,7 @@ export function Status() {
                     </span>
                     <span className="text-sm text-muted-foreground">{c.detail}</span>
                     {c.step && (
-                      <a href={`#/status`} onClick={(e) => { e.preventDefault(); goToStep(c.step!); }}
+                      <a href={`#/health`} onClick={(e) => { e.preventDefault(); goToStep(c.step!); }}
                         className="inline-flex w-fit items-center text-sm font-medium underline underline-offset-4 max-md:min-h-11">
                         Go to step {c.step}<span className="sr-only"> of the setup guide</span>
                       </a>
