@@ -308,12 +308,19 @@ function CallTags({ c }: { c: Checkin }) {
 
 function NetControls({ open, netName, onChange }: { open: boolean; netName?: string; onChange: () => void }) {
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   const openNet = async (e: FormEvent) => {
     e.preventDefault();
-    await post("/api/net/open", { name: name.trim() });
-    setName("");
-    onChange();
+    try {
+      await post("/api/net/open", { name: name.trim() });
+      setError("");
+      setName("");
+      onChange();
+    } catch (err) {
+      setError((err as Error).message);
+      document.getElementById("net-name")?.focus();
+    }
   };
 
   return (
@@ -344,7 +351,9 @@ function NetControls({ open, netName, onChange }: { open: boolean; netName?: str
         ) : (
           <form onSubmit={openNet} className="flex flex-col gap-2">
             <Label htmlFor="net-name">Net name</Label>
+            <p id="net-error" role="alert" className="text-sm font-medium text-destructive empty:hidden">{error}</p>
             <Input id="net-name" value={name} onChange={(e) => setName(e.target.value)}
+              aria-invalid={!!error || undefined} aria-describedby={error ? "net-error" : undefined}
               placeholder="Tuesday Night Net" className="max-md:h-11" />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" className="max-md:h-11 max-md:flex-1">Open net</Button>

@@ -154,7 +154,7 @@ export function Health() {
           <h2 id="h-steps" className="text-xl font-semibold">Setup guide</h2>
           <div className="flex flex-wrap items-center gap-4">
             <Button asChild variant="link" className="h-auto p-0 max-md:h-11">
-              <a href={DOCS} target="_blank" rel="noreferrer">
+              <a href={DOCS} target="_blank" rel="noopener noreferrer">
                 Full guide on GitHub<ExternalLink aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span>
               </a>
             </Button>

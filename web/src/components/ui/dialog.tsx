@@ -7,8 +7,10 @@ function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
 
+// Net Logger change: modal dialogs don't need aria-expanded, and without a matching aria-controls
+// (Radix only sets it while open) checkers read the button as a broken disclosure or menu toggle.
 function DialogTrigger(props: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} aria-expanded={undefined} />;
 }
 
 function DialogClose(props: React.ComponentProps<typeof DialogPrimitive.Close>) {

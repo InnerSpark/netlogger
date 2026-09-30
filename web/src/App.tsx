@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Radio } from "lucide-react";
+import { Menu as MenuIcon, Radio, X } from "lucide-react";
 import { get, post, setOnUnauthorized, type User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AuthScreen, VerifyLicense } from "@/pages/AuthScreen";
@@ -27,6 +27,15 @@ export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState("");
   const [view, setView] = useState<View>(viewFromHash);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Escape closes the phone menu and puts focus back on its button
+  const onMenuKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape" && menuOpen) {
+      setMenuOpen(false);
+      menuButton.current?.focus();
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -44,7 +53,7 @@ export default function App() {
 
   // Hash routing so the back button works
   useEffect(() => {
-    const on = () => setView(viewFromHash());
+    const on = () => { setView(viewFromHash()); setMenuOpen(false); };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
@@ -108,34 +117,42 @@ export default function App() {
             <Radio aria-hidden="true" className="size-5" />
             Net Logger
           </span>
-          <nav aria-label="Main" className="flex flex-wrap gap-1">
-            <Button asChild variant={current === "dashboard" ? "secondary" : "ghost"} size="sm">
-              <a href="#/" aria-current={current === "dashboard" ? "page" : undefined}>Dashboard</a>
-            </Button>
-            <Button asChild variant={current === "nets" || current.startsWith("net-") ? "secondary" : "ghost"} size="sm">
-              <a href="#/nets" aria-current={current === "nets" ? "page" : undefined}>Nets</a>
-            </Button>
-            <Button asChild variant={current === "stats" ? "secondary" : "ghost"} size="sm">
-              <a href="#/stats" aria-current={current === "stats" ? "page" : undefined}>Stats</a>
-            </Button>
-            {user.role === "admin" && (
-              <>
-                <Button asChild variant={current === "health" ? "secondary" : "ghost"} size="sm">
-                  <a href="#/health" aria-current={current === "health" ? "page" : undefined}>Health</a>
-                </Button>
-                <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm">
-                  <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
-                </Button>
-              </>
-            )}
-          </nav>
-          <div className="ml-auto flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">
-              <span className="sr-only">Signed in as </span>{user.callsign || user.username}
-              <span className="sr-only">, {user.role}</span>
-            </span>
-            <PasswordDialog />
-            <Button variant="outline" size="sm" onClick={logout}>Log out</Button>
+          <Button ref={menuButton} type="button" variant="outline" className="ml-auto h-11 md:hidden"
+            aria-expanded={menuOpen} aria-controls="site-menu" onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? <X aria-hidden="true" /> : <MenuIcon aria-hidden="true" />}Menu
+          </Button>
+          {/* Phones: a panel under the Menu button. Wider screens: always shown in the header row. */}
+          <div id="site-menu" onKeyDown={onMenuKey}
+            className={`${menuOpen ? "flex" : "hidden"} w-full flex-col gap-3 pb-1 md:flex md:w-auto md:flex-1 md:flex-row md:items-center md:gap-6 md:pb-0`}>
+            <nav aria-label="Main" className="flex flex-col gap-1 md:flex-row md:flex-wrap">
+              <Button asChild variant={current === "dashboard" ? "secondary" : "ghost"} size="sm" className="max-md:h-11 max-md:justify-start">
+                <a href="#/" aria-current={current === "dashboard" ? "page" : undefined}>Dashboard</a>
+              </Button>
+              <Button asChild variant={current === "nets" || current.startsWith("net-") ? "secondary" : "ghost"} size="sm" className="max-md:h-11 max-md:justify-start">
+                <a href="#/nets" aria-current={current === "nets" ? "page" : undefined}>Nets</a>
+              </Button>
+              <Button asChild variant={current === "stats" ? "secondary" : "ghost"} size="sm" className="max-md:h-11 max-md:justify-start">
+                <a href="#/stats" aria-current={current === "stats" ? "page" : undefined}>Stats</a>
+              </Button>
+              {user.role === "admin" && (
+                <>
+                  <Button asChild variant={current === "health" ? "secondary" : "ghost"} size="sm" className="max-md:h-11 max-md:justify-start">
+                    <a href="#/health" aria-current={current === "health" ? "page" : undefined}>Health</a>
+                  </Button>
+                  <Button asChild variant={current === "users" ? "secondary" : "ghost"} size="sm" className="max-md:h-11 max-md:justify-start">
+                    <a href="#/users" aria-current={current === "users" ? "page" : undefined}>Users</a>
+                  </Button>
+                </>
+              )}
+            </nav>
+            <div className="flex flex-wrap items-center gap-2 border-t pt-3 text-sm md:ml-auto md:border-0 md:pt-0">
+              <span className="text-muted-foreground max-md:w-full">
+                <span className="sr-only">Signed in as </span>{user.callsign || user.username}
+                <span className="sr-only">, {user.role}</span>
+              </span>
+              <PasswordDialog />
+              <Button variant="outline" size="sm" className="max-md:h-11" onClick={logout}>Log out</Button>
+            </div>
           </div>
         </div>
       </header>
@@ -149,10 +166,10 @@ export default function App() {
       </main>
       <footer className="mx-auto flex max-w-6xl flex-wrap gap-x-4 gap-y-1 border-t px-4 py-4 text-sm text-muted-foreground">
         <span>Net Logger, free software under the AGPL-3.0</span>
-        <a href={`${REPO}#readme`} target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
+        <a href={`${REPO}#readme`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
           Help<span className="sr-only"> (opens in a new tab)</span>
         </a>
-        <a href={REPO} target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
+        <a href={REPO} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
           Source code<span className="sr-only"> (opens in a new tab)</span>
         </a>
       </footer>
