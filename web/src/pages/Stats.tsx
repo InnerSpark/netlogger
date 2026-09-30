@@ -65,7 +65,7 @@ export function Stats() {
         {data ? `Showing ${data.nets.length} ${data.nets.length === 1 ? "net" : "nets"}, ${range.label.toLowerCase()}.` : ""}
       </p>
 
-      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {!data ? <p className="text-muted-foreground">Loading…</p> : data.nets.length === 0 ? (
         <Card>
@@ -183,7 +183,7 @@ function CheckinsChart({ nets }: { nets: StatNet[] }) {
           <li className="flex items-center gap-1.5"><span aria-hidden="true" className="size-3 rounded-sm bg-[var(--series-2)]" />First time</li>
         </ul>
         <div ref={wrap} className="relative w-full" onMouseLeave={() => setHover(null)}>
-          <svg width={w} height={H} role="img" aria-label={summary} className="block overflow-visible">
+          <svg width={w} height={H} role="img" aria-label={summary} className="block max-w-full overflow-visible">
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={PAD.left} x2={w - PAD.right} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeWidth={1} />
@@ -241,7 +241,7 @@ function CheckinsChart({ nets }: { nets: StatNet[] }) {
 
         {table && (
           <div id="checkins-table" className="rounded-xl border">
-            <Table>
+            <Table label="Check-ins per net">
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col" className="pl-4">Date</TableHead>
@@ -281,7 +281,7 @@ function Regulars({ data }: { data: StatsData }) {
         <CardDescription>Stations that checked in most in this range.</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
-        <Table>
+        <Table label="Regulars">
           <TableHeader>
             <TableRow>
               <TableHead scope="col" className="pl-6">Call</TableHead>

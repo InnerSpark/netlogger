@@ -26,7 +26,7 @@ export function NetDetail({ id }: { id: number }) {
     return needle ? d.transmissions.filter((t) => `${t.text} ${t.calls || ""}`.toLowerCase().includes(needle)) : d.transmissions;
   }, [d, q]);
 
-  if (error) return <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-destructive">{error}</p>;
+  if (error) return <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-destructive">{error}</p>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,7 +61,7 @@ export function NetDetail({ id }: { id: number }) {
             <h2 id="h-roster" className="text-xl font-semibold">Check-ins</h2>
             {d.checkins.length === 0 ? <p className="text-muted-foreground">No check-ins logged.</p> : (
               <div className="rounded-xl border bg-card">
-                <Table>
+                <Table label="Check-ins">
                   <TableHeader>
                     <TableRow>
                       <TableHead scope="col" className="pl-4 max-md:hidden">#</TableHead>

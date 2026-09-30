@@ -50,14 +50,14 @@ export function Users({ me }: { me: User }) {
         <p className="text-muted-foreground">{ROLE_HELP}</p>
       </div>
 
-      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">{error}</p>}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-        <div className="rounded-xl border bg-card">
+        <div className="min-w-0 rounded-xl border bg-card">
           {!users ? (
             <p className="p-4 text-muted-foreground">Loading…</p>
           ) : (
-            <Table>
+            <Table label="Users">
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col" className="pl-4">Callsign</TableHead>
@@ -80,6 +80,7 @@ export function Users({ me }: { me: User }) {
                     <TableCell>
                       {!u.license_ok ? <Badge variant="destructive">Not verified</Badge>
                         : u.verified_by === "callook" ? <span className="text-muted-foreground">FCC checked</span>
+                        : u.verified_by === "self" ? <span className="text-muted-foreground">Self-entered (first admin)</span>
                         : u.verified_by ? <span className="text-muted-foreground">Checked by {u.verified_by.replace("admin:", "")}</span>
                         : <span className="text-muted-foreground">Not required</span>}
                     </TableCell>
@@ -154,7 +155,7 @@ function AddUser({ onAdded }: { onAdded: (users: User[], name: string) => void }
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" checked={manual} onChange={(e) => setManual(e.target.checked)}
                 className="mt-0.5 size-4 accent-primary" />
-              <span>I checked this license myself <span className="text-muted-foreground">(non-US calls, or when the FCC lookup is down)</span></span>
+              <span>I checked this license myself <span className="text-muted-foreground">(calls from outside the US, or when the FCC lookup is down)</span></span>
             </label>
           </div>
           <div className="flex flex-col gap-2">

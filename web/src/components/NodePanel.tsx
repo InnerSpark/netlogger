@@ -73,7 +73,7 @@ export function NodePanel({ admin }: { admin: boolean }) {
       {s?.enabled && (
         <CardContent className="flex flex-col gap-4">
           {s.error ? (
-            <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{s.error}</p>
+            <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">{s.error}</p>
           ) : s.links.length === 0 ? (
             <p className="text-sm text-muted-foreground">Not connected. Nothing is being logged from the air.</p>
           ) : (
@@ -104,7 +104,7 @@ export function NodePanel({ admin }: { admin: boolean }) {
               <Button type="submit" disabled={busy} className="max-md:h-11"><Link2 aria-hidden="true" />Connect</Button>
             </div>
             {s.default_node && !s.links.some((l) => l.node === s.default_node) && (
-              <Button type="button" variant="link" className="h-auto self-start p-0" disabled={busy}
+              <Button type="button" variant="link" className="h-auto min-h-6 self-start p-0 max-md:min-h-11" disabled={busy}
                 onClick={() => act("connect", s.default_node)}>
                 Connect to default node {s.default_node}
               </Button>

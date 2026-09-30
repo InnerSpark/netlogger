@@ -12,7 +12,7 @@ Net Logger listens to your AllStar node, turns each transmission into text, and 
 
 ## What it does
 
-- **Live roster:** check-ins appear as stations call in, in order, with name and class from callook.info.
+- **Live roster:** check-ins appear as stations call in, in order. Calls from any country; US calls get name and class from callook.info.
 - **Flags from speech:** "with traffic", "short time", "call me back" are picked up and flagged.
 - **Recheck list:** who asked to be called back and hasn't been.
 - **First-timer tag:** calls never logged before, so net control can welcome them.
@@ -108,11 +108,32 @@ Net Logger is for licensed amateur radio operators.
 
 - The first person to open the dashboard creates the **admin** account with their **callsign**. It's checked against the FCC license database (via [callook.info](https://callook.info)); unknown or expired licenses are refused.
 - Admins add users on the **Users** page by callsign. **Operators** run nets and connect nodes. **Admins** also manage users.
-- **Non-US hams:** callook.info only covers US licenses, so an admin ticks **"I checked this license myself"** when adding them. The same box works if the FCC lookup is down.
+- **Hams outside the US:** callook.info only covers US licenses, so an admin ticks **"I checked this license myself"** when adding them. The same box works if the FCC lookup is down. If the first admin is outside the US, their call is accepted as entered.
 - Licenses are **re-checked every 30 days** at login. An expired license loses access until a current callsign is verified.
 - Passwords are at least 10 characters and stored as scrypt hashes. Changing or resetting a password logs that account out everywhere else.
 - Five wrong passwords in a row from one address slows further tries down.
 - To run without license checks (a club demo, say), set `REQUIRE_LICENSE=0`.
+
+### Locked out
+
+If the only admin forgets their password, reset it on the server. It prints a new random password and logs that account out everywhere:
+
+```bash
+sudo netlogger reset-password W6ABC                                    # install.sh
+docker compose exec netlogger python -m netlogger reset-password W6ABC  # Docker
+```
+
+Use a username or a callsign. Log in with the new password, then change it under **Change password**.
+
+## Backups
+
+Every net, check-in, transcript and account lives in one SQLite file: `/var/lib/netlogger/netlog.db` (install.sh) or `/data/netlog.db` in the Docker volume.
+
+- **Back up any time, even during a net:** `sudo netlogger backup` (Docker: `docker compose exec netlogger python -m netlogger backup`). Copies go to `backups/` next to the database, newest 10 kept.
+- **install.sh backs up automatically** before every upgrade.
+- To save a copy somewhere else: `sudo netlogger backup /var/lib/netlogger/before-move.db`, then copy that file off the server.
+- **Restore:** `sudo systemctl stop netlogger`, copy the backup over `netlog.db` (owned by `netlogger`), then `sudo systemctl start netlogger`.
+- Backups hold password hashes, so they're readable by the `netlogger` user only. Keep off-server copies private too.
 
 ## Security
 
@@ -158,7 +179,7 @@ Start with the **Health** page in the app (admins only). Its health check shows 
 
 ## Known limits
 
-- **US callsigns only** for now (parser and lookup). Other countries are welcome as a contribution.
+- **Callsigns from any country** are logged (ITU format: VE3ABC, G4XYZ, 2E0ABC, DL1AB, VK2ABC). Name and class lookup is **US only** (callook.info), so other calls log without a name. Lookups for other countries are welcome as a contribution.
 - The **first** callsign in a transmission is logged as the check-in. If net control reads out a new call, remove the extra row.
 - Weak signals and doubles need a manual fix.
 - If the internet between the AllStar server and the logger drops, logging stops. The net itself keeps running.

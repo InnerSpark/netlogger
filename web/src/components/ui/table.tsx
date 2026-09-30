@@ -1,9 +1,24 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+// Net Logger change: when a table is wider than the screen, its scroll box becomes a named,
+// focusable region so keyboard users can scroll it (WCAG 2.1.1).
+function Table({ className, label, ...props }: React.ComponentProps<"table"> & { label?: string }) {
+  const box = React.useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = React.useState(false);
+  React.useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const check = () => setScrolls(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div ref={box} data-slot="table-container" className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
+      {...(scrolls ? { tabIndex: 0, role: "region", "aria-label": label ? `${label}, scrolls sideways` : "Table, scrolls sideways" } : {})}>
       <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );

@@ -11,6 +11,8 @@ import { Nets } from "@/pages/Nets";
 import { NetDetail } from "@/pages/NetDetail";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
+const REPO = "https://github.com/InnerSpark/netlogger";
+
 type Status = { setup_needed: boolean; require_license: boolean; user: User | null };
 type View = "dashboard" | "users" | "health" | "stats" | "nets" | `net-${number}`;
 
@@ -63,10 +65,17 @@ export default function App() {
     requestAnimationFrame(() => document.querySelector<HTMLElement>("main h1")?.focus());
   }, [shown, userId, loaded]);
 
+  // Page title names the page first, so tabs and screen readers say where you are
+  useEffect(() => {
+    const names: Record<string, string> = { dashboard: "Dashboard", nets: "Nets", stats: "Stats", health: "Health", users: "Users" };
+    const page = !status?.user ? (status?.setup_needed ? "Set up" : "Log in") : shown.startsWith("net-") ? "Net log" : names[shown];
+    document.title = page ? `${page} · Net Logger` : "Net Logger";
+  }, [shown, status]);
+
   if (error) {
     return (
       <main className="mx-auto max-w-md px-4 py-16">
-        <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive">{error}</p>
+        <p role="alert" className="rounded-md border border-destructive/50 bg-background px-4 py-3 text-destructive">{error}</p>
         <Button className="mt-4" variant="outline" onClick={load}>Try again</Button>
       </main>
     );
@@ -99,7 +108,7 @@ export default function App() {
             <Radio aria-hidden="true" className="size-5" />
             Net Logger
           </span>
-          <nav aria-label="Main" className="flex gap-1">
+          <nav aria-label="Main" className="flex flex-wrap gap-1">
             <Button asChild variant={current === "dashboard" ? "secondary" : "ghost"} size="sm">
               <a href="#/" aria-current={current === "dashboard" ? "page" : undefined}>Dashboard</a>
             </Button>
@@ -130,7 +139,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main id="main" className="mx-auto max-w-6xl px-4 py-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 outline-none">
         {current === "users" ? <Users me={user} />
           : current === "health" ? <Health />
           : current === "nets" ? <Nets />
@@ -138,6 +147,15 @@ export default function App() {
           : current.startsWith("net-") ? <NetDetail key={current} id={Number(current.slice(4))} />
           : <Dashboard admin={user.role === "admin"} />}
       </main>
+      <footer className="mx-auto flex max-w-6xl flex-wrap gap-x-4 gap-y-1 border-t px-4 py-4 text-sm text-muted-foreground">
+        <span>Net Logger, free software under the AGPL-3.0</span>
+        <a href={`${REPO}#readme`} target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
+          Help<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+        <a href={REPO} target="_blank" rel="noreferrer" className="inline-flex min-h-6 items-center underline underline-offset-4 max-md:min-h-11">
+          Source code<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </footer>
     </>
   );
 }

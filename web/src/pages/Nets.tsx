@@ -66,7 +66,7 @@ export function Nets() {
         <p className="text-muted-foreground">Schedule nets to open on their own, and look back at past nets.</p>
       </div>
 
-      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">{error}</p>}
 
       <section aria-labelledby="h-scheduled" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -139,7 +139,7 @@ export function Nets() {
           <p className="rounded-xl border border-dashed px-4 py-8 text-center text-muted-foreground">No nets logged yet.</p>
         ) : (
           <div className="rounded-xl border bg-card">
-            <Table>
+            <Table label="Past nets">
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col" className="pl-4">Net</TableHead>

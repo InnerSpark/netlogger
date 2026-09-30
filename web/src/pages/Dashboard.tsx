@@ -126,7 +126,7 @@ export function Dashboard({ admin }: { admin: boolean }) {
           )}
         </p>
         {offline && (
-          <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">
             Lost connection to the logger. Retrying…
           </p>
         )}
@@ -190,7 +190,7 @@ export function Dashboard({ admin }: { admin: boolean }) {
           </ol>
         ) : (
           <div className="rounded-xl border bg-card">
-            <Table>
+            <Table label="Check-ins">
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col" className="pl-4">#</TableHead>

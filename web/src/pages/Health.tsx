@@ -116,7 +116,7 @@ export function Health() {
         </p>
       </div>
 
-      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm text-destructive">{error}</p>}
 
       <Card className="gap-4">
         <CardHeader>
@@ -136,7 +136,7 @@ export function Health() {
                     <span className="text-sm text-muted-foreground">{c.detail}</span>
                     {c.step && (
                       <a href={`#/health`} onClick={(e) => { e.preventDefault(); goToStep(c.step!); }}
-                        className="inline-flex w-fit items-center text-sm font-medium underline underline-offset-4 max-md:min-h-11">
+                        className="inline-flex min-h-6 w-fit items-center text-sm font-medium underline underline-offset-4 max-md:min-h-11">
                         Go to step {c.step}<span className="sr-only"> of the setup guide</span>
                       </a>
                     )}

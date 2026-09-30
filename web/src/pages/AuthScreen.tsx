@@ -58,7 +58,7 @@ export function AuthScreen({ mode, onDone, requireLicense = true }: { mode: "set
           <CardDescription>
             {setup
               ? requireLicense
-                ? "Create the first admin account. Your callsign is checked against the FCC license database."
+                ? "Create the first admin account. US callsigns are checked against the FCC license database. Calls from other countries are accepted as entered."
                 : "Create the first admin account. You can add net control operators after."
               : "Use the account your logger admin gave you."}
           </CardDescription>
