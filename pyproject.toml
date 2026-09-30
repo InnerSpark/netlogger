@@ -14,7 +14,7 @@ classifiers = [
   "Environment :: Web Environment",
   "Operating System :: POSIX :: Linux",
 ]
-dependencies = ["numpy", "faster-whisper"]
+dependencies = ["numpy", "faster-whisper", "tzdata"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

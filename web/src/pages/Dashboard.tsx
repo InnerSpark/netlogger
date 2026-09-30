@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { ArrowRight, Check, Download, Plus } from "lucide-react";
-import { get, post, type Checkin, type NetState, type SetupState } from "@/lib/api";
+import { get, post, type Checkin, type NetState, type Schedule, type SetupState } from "@/lib/api";
+import { when } from "./Nets";
 import { NodePanel } from "@/components/NodePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -346,10 +347,28 @@ function NetControls({ open, netName, onChange }: { open: boolean; netName?: str
               <Button type="submit" className="max-md:h-11 max-md:flex-1">Open net</Button>
               <ExportButton />
             </div>
+            <NextNet />
           </form>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function NextNet() {
+  const [next, setNext] = useState<Schedule | null>(null);
+  useEffect(() => {
+    get<{ schedules: Schedule[] }>("/api/schedules").then(({ schedules }) => {
+      const up = schedules.filter((s) => s.enabled && s.next_start).sort((a, b) => a.next_start! - b.next_start!);
+      setNext(up[0] || null);
+    }).catch(() => {});
+  }, []);
+  if (!next) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      Next scheduled: <span className="font-medium text-foreground">{next.name}</span>, {when(next.next_start!)}.{" "}
+      <a href="#/nets" className="underline underline-offset-4">Schedules</a>
+    </p>
   );
 }
 

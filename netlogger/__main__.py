@@ -2,7 +2,7 @@
 import threading
 from http.server import ThreadingHTTPServer
 
-from . import __version__, ami, audio, config, db
+from . import __version__, ami, audio, config, db, schedule
 from .web import Handler
 
 
@@ -11,6 +11,7 @@ def main():
     print(f"Net Logger {__version__}", flush=True)
     threading.Thread(target=audio.transcriber, daemon=True).start()
     threading.Thread(target=audio.listener, daemon=True).start()
+    schedule.start()
     if config.NODE_CONTROL:
         print(f"node control on: logger node {config.LOGGER_NODE} via {config.AMI_HOST}:{config.AMI_PORT}", flush=True)
         if config.AUTO_CONNECT and config.DEFAULT_NODE:

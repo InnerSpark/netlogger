@@ -6,13 +6,19 @@ import { AuthScreen, VerifyLicense } from "@/pages/AuthScreen";
 import { Dashboard } from "@/pages/Dashboard";
 import { Users } from "@/pages/Users";
 import { Setup } from "@/pages/Setup";
+import { Nets } from "@/pages/Nets";
+import { NetDetail } from "@/pages/NetDetail";
 import { PasswordDialog } from "@/components/PasswordDialog";
 
 type Status = { setup_needed: boolean; require_license: boolean; user: User | null };
-type View = "dashboard" | "users" | "setup";
+type View = "dashboard" | "users" | "setup" | "nets" | `net-${number}`;
 
-const viewFromHash = (): View =>
-  window.location.hash === "#/users" ? "users" : window.location.hash === "#/setup" ? "setup" : "dashboard";
+const viewFromHash = (): View => {
+  const h = window.location.hash;
+  const m = h.match(/^#\/nets\/(\d+)$/);
+  if (m) return `net-${Number(m[1])}`;
+  return h === "#/users" ? "users" : h === "#/setup" ? "setup" : h === "#/nets" ? "nets" : "dashboard";
+};
 
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -96,6 +102,9 @@ export default function App() {
             <Button asChild variant={current === "dashboard" ? "secondary" : "ghost"} size="sm">
               <a href="#/" aria-current={current === "dashboard" ? "page" : undefined}>Dashboard</a>
             </Button>
+            <Button asChild variant={current === "nets" || current.startsWith("net-") ? "secondary" : "ghost"} size="sm">
+              <a href="#/nets" aria-current={current === "nets" ? "page" : undefined}>Nets</a>
+            </Button>
             <Button asChild variant={current === "setup" ? "secondary" : "ghost"} size="sm">
               <a href="#/setup" aria-current={current === "setup" ? "page" : undefined}>Setup</a>
             </Button>
@@ -116,7 +125,11 @@ export default function App() {
         </div>
       </header>
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">
-        {current === "users" ? <Users me={user} /> : current === "setup" ? <Setup /> : <Dashboard />}
+        {current === "users" ? <Users me={user} />
+          : current === "setup" ? <Setup />
+          : current === "nets" ? <Nets />
+          : current.startsWith("net-") ? <NetDetail key={current} id={Number(current.slice(4))} />
+          : <Dashboard />}
       </main>
     </>
   );
