@@ -21,7 +21,7 @@ jobs:
       - run: npm ci && npm run build
         working-directory: web
       - run: tar -C web/dist -czf web-dist.tgz .
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: web-dist.tgz
           generate_release_notes: true
