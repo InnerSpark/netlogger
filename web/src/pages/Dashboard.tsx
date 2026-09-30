@@ -41,7 +41,7 @@ function useIsPhone() {
   return phone;
 }
 
-export function Dashboard() {
+export function Dashboard({ admin }: { admin: boolean }) {
   const [state, setState] = useState<NetState | null>(null);
   const [offline, setOffline] = useState(false);
   const [announce, setAnnounce] = useState("");
@@ -135,17 +135,20 @@ export function Dashboard() {
       {noAudio && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/50 px-4 py-3">
           <p className="text-sm">
-            <strong>Not hearing AllStar yet.</strong> Finish hooking up your node to start logging from the air.
+            <strong>Not hearing AllStar yet.</strong>{" "}
+            {admin ? "Finish hooking up your node to start logging from the air." : "Ask an admin to check the logger's Status page."}
           </p>
-          <Button asChild size="sm" className="max-md:h-11">
-            <a href="#/setup">Go to Setup<ArrowRight aria-hidden="true" /></a>
-          </Button>
+          {admin && (
+            <Button asChild size="sm" className="max-md:h-11">
+              <a href="#/status">Check Status<ArrowRight aria-hidden="true" /></a>
+            </Button>
+          )}
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <NetControls open={open} netName={net?.name} onChange={refresh} />
-        <NodePanel />
+        <NodePanel admin={admin} />
         <AddCheckin open={open} onAdded={refresh} />
       </div>
 

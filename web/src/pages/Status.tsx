@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, CircleDashed, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, CircleAlert, CircleDashed, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { get, type SetupState } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,10 +22,12 @@ function loggerAddress() {
   return h === "localhost" || h === "127.0.0.1" ? "<this logger's IP>" : h;
 }
 
-export function Setup() {
+export function Status() {
   const [s, setS] = useState<SetupState | null>(null);
   const [error, setError] = useState("");
   const [announce, setAnnounce] = useState("");
+  // null = automatic: the guide opens itself while something needs fixing
+  const [guideChoice, setGuideChoice] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -49,7 +51,7 @@ export function Setup() {
   const testNode = s?.default_node || "2000";
   const amiHost = s?.ami_host || "<AllStar server IP>";
 
-  const checks: { label: string; status: Status; detail: string }[] = s ? [
+  const checks: { label: string; status: Status; detail: string; step?: number }[] = s ? [
     { label: "Net Logger is running", status: "done", detail: `Version ${s.version}.` },
     {
       label: "Speech to text",
@@ -64,6 +66,7 @@ export function Setup() {
       detail: s.last_packet
         ? `Last audio ${ago(s.last_packet)}.`
         : `Nothing received on UDP ${port} yet. Do steps 1 to 4, then key up on a linked node.`,
+      step: s.last_packet ? undefined : 1,
     },
     {
       label: "Node control",
@@ -73,6 +76,7 @@ export function Setup() {
         : s.node.reachable
           ? `Talking to ${s.ami_host}:${s.ami_port} as ${s.ami_user}.`
           : s.node.error || "Can't reach the AllStar server.",
+      step: s.node.configured && s.node.reachable ? undefined : 5,
     },
     {
       label: `Logger node ${node} linked`,
@@ -83,14 +87,32 @@ export function Setup() {
     },
   ] : [];
 
+  // Node control is optional, so only a broken one counts against health
+  const healthy = !!s && s.transcriber === "ready" && !!s.last_packet && (!s.node.configured || !!s.node.reachable);
+  const guideOpen = guideChoice ?? (!!s && !healthy);
+
+  // Open the guide and move focus to a step's heading so screen readers announce it
+  const goToStep = (n: number) => {
+    setGuideChoice(true);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`step-${n}`);
+      if (!el) return;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      el.focus({ preventScroll: true });
+    });
+  };
+
   const copied = (what: string) => setAnnounce(`${what} copied.`);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Setup</h1>
+        <h1 tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Status</h1>
         <p className="text-muted-foreground">
-          Hook Net Logger up to your AllStar server. Your values are filled in below. Status updates on its own.
+          {!s ? "Checking the logger…" : healthy
+            ? "Everything is working. This page updates on its own."
+            : "Something needs attention. The setup guide below walks you through it."}
         </p>
       </div>
 
@@ -98,7 +120,7 @@ export function Setup() {
 
       <Card className="gap-4">
         <CardHeader>
-          <CardTitle>Status</CardTitle>
+          <CardTitle>Health</CardTitle>
         </CardHeader>
         <CardContent>
           {!s ? <p className="text-muted-foreground">Loading…</p> : (
@@ -112,6 +134,12 @@ export function Setup() {
                       <span className="sr-only">: {STATUS_TEXT[c.status]}.</span>
                     </span>
                     <span className="text-sm text-muted-foreground">{c.detail}</span>
+                    {c.step && (
+                      <a href={`#/status`} onClick={(e) => { e.preventDefault(); goToStep(c.step!); }}
+                        className="inline-flex w-fit items-center text-sm font-medium underline underline-offset-4 max-md:min-h-11">
+                        Go to step {c.step}<span className="sr-only"> of the setup guide</span>
+                      </a>
+                    )}
                   </div>
                   <span className="ml-auto shrink-0 text-sm text-muted-foreground" aria-hidden="true">{STATUS_TEXT[c.status]}</span>
                 </li>
@@ -122,14 +150,23 @@ export function Setup() {
       </Card>
 
       <section aria-labelledby="h-steps" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="h-steps" className="text-xl font-semibold">Steps</h2>
-          <Button asChild variant="link" className="h-auto p-0 max-md:h-11">
-            <a href={DOCS} target="_blank" rel="noreferrer">
-              Full guide on GitHub<ExternalLink aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="h-steps" className="text-xl font-semibold">Setup guide</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <Button asChild variant="link" className="h-auto p-0 max-md:h-11">
+              <a href={DOCS} target="_blank" rel="noreferrer">
+                Full guide on GitHub<ExternalLink aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="max-md:h-11"
+              aria-expanded={guideOpen} aria-controls="guide" onClick={() => setGuideChoice(!guideOpen)}>
+              {guideOpen ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+              {guideOpen ? "Hide guide" : "Show guide"}
+            </Button>
+          </div>
         </div>
+        {guideOpen && (
+        <div id="guide" className="flex flex-col gap-4">
         {s?.same_host && (
           <p className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
             <strong>Installed with install.sh?</strong> Steps 1 to 5 are already done. If Audio from AllStar still says Not set up, restart Asterisk: <code className="font-mono">sudo systemctl restart asterisk</code>
@@ -206,6 +243,8 @@ DEFAULT_NODE=${s?.default_node || "<your node>"}`}</Code>
             the logger hears the node and never transmits.
           </p>
         </Step>
+        </div>
+        )}
       </section>
 
       <div aria-live="polite" className="sr-only">{announce}</div>
@@ -232,7 +271,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   return (
     <Card className="gap-3">
       <CardHeader>
-        <h3 className="flex items-baseline gap-2 font-semibold leading-snug">
+        <h3 id={`step-${n}`} tabIndex={-1} className="flex scroll-mt-4 items-baseline gap-2 font-semibold leading-snug outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
           <span className="text-muted-foreground">Step {n}.</span> {title}
         </h3>
       </CardHeader>
