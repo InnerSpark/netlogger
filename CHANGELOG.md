@@ -25,7 +25,7 @@ First public release.
 - Nets page: every past net with roster, searchable transcript, CSV and transcript downloads.
 - Stats page: check-ins per net over time (returning vs first time), typical check-ins vs the previous period, stations heard, first-timers, regulars with attendance. Filter by range and scheduled net.
 - Health page (admins): live health checks, plus an AllStar setup guide with your values filled in that opens itself when something breaks.
-- Works on a phone, light and dark mode, screen reader and keyboard friendly (WCAG 2.2 AA).
+- Works on a phone (navigation folds into a Menu button), light and dark mode, screen reader and keyboard friendly (WCAG 2.2 AA).
 
 ### Accounts and security
 - Accounts for licensed hams only: callsign checked against the FCC database (callook.info) at setup and when adding users, re-checked every 30 days. Admins confirm licenses from other countries; a first admin outside the US is accepted as entered. `REQUIRE_LICENSE=0` turns it off.

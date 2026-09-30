@@ -37,7 +37,7 @@ export function PasswordDialog() {
   return (
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">Change password</Button>
+        <Button variant="ghost" size="sm" className="max-md:h-11">Change password</Button>
       </DialogTrigger>
       <DialogContent>
         {done ? (

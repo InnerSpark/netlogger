@@ -7,8 +7,10 @@ function AlertDialog(props: React.ComponentProps<typeof AlertDialogPrimitive.Roo
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
 }
 
+// Net Logger change: modal dialogs don't need aria-expanded, and without a matching aria-controls
+// (Radix only sets it while open) checkers read the button as a broken disclosure or menu toggle.
 function AlertDialogTrigger(props: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>) {
-  return <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />;
+  return <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} aria-expanded={undefined} />;
 }
 
 function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
