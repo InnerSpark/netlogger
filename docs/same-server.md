@@ -95,6 +95,8 @@ sudo apache2ctl -S
 
 `-S` should list your main site as the **default server** and the logger as a **namevhost**.
 
+**After a Supermon-NG or ASL update:** run `sudo apache2ctl -S` again. Updates can delete the `010-supermon-ng.conf` copy, which leaves the logger as the only site, so your node's address shows the logger. If it's gone, repeat the `cp`, `sed` and `a2ensite` steps above, then reload Apache.
+
 **HTTPS:**
 - **Behind Cloudflare** (orange cloud): Cloudflare handles HTTPS. Add a proxied A record for the subdomain. With **Flexible** mode, Cloudflare talks to Apache on port 80, which is what the site above listens on. Also set `CLIENT_IP_HEADER=CF-Connecting-IP` in `/etc/netlogger/netlogger.env` and restart, so login throttling sees each visitor instead of Cloudflare.
 - **Without Cloudflare:** `sudo apt install -y certbot python3-certbot-apache && sudo certbot --apache -d netlog.example.com`
