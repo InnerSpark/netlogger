@@ -12,7 +12,7 @@ import threading
 import time
 from http.server import ThreadingHTTPServer
 
-from . import __version__, ami, audio, auth, config, db, schedule
+from . import __version__, ami, audio, auth, config, db, push, schedule
 from .web import Handler
 
 KEEP_BACKUPS = 10
@@ -59,6 +59,9 @@ def main():
     threading.Thread(target=audio.transcriber, daemon=True).start()
     threading.Thread(target=audio.listener, daemon=True).start()
     schedule.start()
+    if config.PUSH:
+        push.start_watchdog()
+        print("push notifications on", flush=True)
     if config.NODE_CONTROL:
         print(f"node control on: logger node {config.LOGGER_NODE} via {config.AMI_HOST}:{config.AMI_PORT}", flush=True)
         if config.AUTO_CONNECT and config.DEFAULT_NODE:

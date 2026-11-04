@@ -3,7 +3,7 @@ import json
 import time
 import urllib.request
 
-from . import config, db
+from . import config, db, push
 from .parser import extract_calls, extract_flags, is_us, match_known, resolve
 
 
@@ -70,11 +70,14 @@ def add_checkin(net_id, call, flags, text=""):
     if existing:
         merged = sorted(set(filter(None, existing["flags"].split(","))) | set(flags))
         db.q("UPDATE checkins SET flags=? WHERE id=?", (",".join(merged), existing["id"]))
+        push.net_changed(net_id)
         return existing["id"]
     seen = db.q("SELECT 1 FROM checkins WHERE call=? AND net_id<>? LIMIT 1", (call, net_id), one=True)
     info = lookup(call)
-    return db.insert(
+    cid = db.insert(
         """INSERT INTO checkins (net_id, ts, call, name, location, class, valid, first_time, flags, transcript)
            VALUES (?,?,?,?,?,?,?,?,?,?)""",
         (net_id, time.time(), call, info.get("name", ""), info.get("location", ""),
          info.get("class", ""), info.get("valid"), 0 if seen else 1, ",".join(flags), text))
+    push.checkin_added(net_id, call, not seen, info.get("name", ""))
+    return cid

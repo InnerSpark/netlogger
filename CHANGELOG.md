@@ -33,6 +33,9 @@ First public release.
 - Reverse proxy support (`TRUST_PROXY`, plus `CLIENT_IP_HEADER` for Cloudflare).
 - `netlogger reset-password` for a locked-out admin.
 
+### iOS app support
+- Optional Apple push for a companion iOS app: net open, first-time check-ins and "no audio" alerts, plus Live Activity start, update and end. Off unless the `APNS_*` settings are set. Devices register through `/api/devices`.
+
 ### Install and operations
 - `install.sh` for ASL3 servers: adds the logger node and AMI user through include files without editing existing node settings, backs up every file it touches, runs under systemd at lower priority than Asterisk, refuses to install with under 1 GB of free memory. `uninstall.sh` reverses it.
 - `netlogger backup` copies the database safely while running. The installer backs up before every upgrade.
