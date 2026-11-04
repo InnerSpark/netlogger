@@ -15,3 +15,7 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule: { interval: monthly }
+    ignore:
+      # Python stays on the version servers run (Debian 12 ships 3.11). Move it on purpose.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
