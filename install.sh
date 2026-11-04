@@ -259,6 +259,10 @@ if [ ! -f "$APP_DIR/web/dist/index.html" ]; then
       || die "Couldn't get the dashboard. Install Node 20+ (apt install nodejs npm) and run this again."
   fi
 fi
+# Code and dashboard are owned by root and readable by the service, whatever permissions
+# they arrived with (a copy from a Mac can carry owner-only files)
+chown -R root:root "$APP_DIR/netlogger" "$APP_DIR/web/dist"
+chmod -R u=rwX,go=rX "$APP_DIR/netlogger" "$APP_DIR/web/dist"
 ok "dashboard ready"
 
 # Settings: sized to this machine, kept on later runs
