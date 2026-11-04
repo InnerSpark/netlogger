@@ -1,8 +1,8 @@
 from types import SimpleNamespace as Seg
 
-from netlogger.audio import keep_text
+from netlogger.audio import PROMPT_BASE, keep_text
 
-P = "Ham radio net check-ins with callsigns in phonetics, like Kilo Five Alpha Bravo Charlie. Regulars: W6UXD."
+P = PROMPT_BASE + " Regulars: W6UXD."
 
 
 def seg(text, no_speech=0.1, logprob=-0.3, ratio=1.2):
@@ -39,3 +39,12 @@ def test_stock_hallucinations_dropped():
 def test_phrase_cut_keeps_real_call():
     assert keep_text([seg("W6UX-D, how are you doing? You're gone.")], P) == "W6UX-D, how are you doing? You're gone."
     assert keep_text([seg("W6UXD checking in. Thanks for watching!")], P) == "W6UXD checking in."
+
+
+def test_net_words():
+    # real transmissions made only of the common net words are kept
+    assert keep_text([seg("This is W6UXD testing.")], P) == "This is W6UXD testing."
+    assert keep_text([seg("Testing, testing.")], P) == "Testing, testing."
+    assert keep_text([seg("KE5KGX mobile, no traffic.")], P) == "KE5KGX mobile, no traffic."
+    # the word list read back on static is dropped
+    assert keep_text([seg("Common words: testing, checking in, monitoring.")], P) == ""

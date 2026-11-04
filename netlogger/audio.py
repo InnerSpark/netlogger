@@ -11,13 +11,16 @@ from . import config
 from .netlog import log_text
 
 USRP_HDR = struct.Struct(">4sIIIIIII")  # eye, seq, memory, keyup, talkgroup, type, mpxid, reserved
-PROMPT_BASE = "Ham radio net check-ins with callsigns in phonetics, like Kilo Five Alpha Bravo Charlie."
+PROMPT_BASE = ("Ham radio net check-ins with callsigns in phonetics, like Kilo Five Alpha Bravo Charlie. "
+               # words nets use a lot, so Whisper picks "testing" over "technical"
+               "Common words: testing, checking in, monitoring, mobile, portable, no traffic, with traffic, "
+               "short time, recheck, clear.")
 # Stock phrases Whisper invents for silence and noise (it learned them from video captions)
 HALLUCINATIONS = ("thanks for watching", "thank you for watching", "new videos every week", "subscribe",
                   "like and subscribe", "see you next time", "see you in the next video", "subtitles by",
                   "transcribed by", "pfft")
 # Words that only show up if Whisper is parroting the prompt back
-ECHO_WORDS = {"regulars", "phonetics", "callsigns", "ham", "like"}
+ECHO_WORDS = {"regulars", "phonetics", "callsigns", "ham", "like", "common", "words"}
 
 
 def prompt():

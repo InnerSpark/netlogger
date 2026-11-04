@@ -13,7 +13,7 @@ First public release.
 - Local speech to text with Whisper (faster-whisper). Audio cleanup first: removes DC and low rumble, levels quiet signals.
 - Whisper ignores static, tones and CW IDs: voice activity filter, drops low-confidence and looping segments, drops transcripts that only read the prompt back, strips stock caption phrases.
 - Callsigns from any country (ITU format), spoken in phonetics or written: W6UXD, VE3ABC, G4XYZ, 2E0ABC, VK2ABC. Parser handles possessives ("Six's"), "whisky", "ex-ray", "fife", "tree", "niner".
-- Whisper prompt includes the phonetic alphabet and calls this logger has seen. `KNOWN_CALLS` adds net regulars and net control.
+- Whisper prompt includes the phonetic alphabet, common net words ("testing", "monitoring", "no traffic") and calls this logger has seen. `KNOWN_CALLS` adds net regulars and net control.
 - Clipped or garbled calls snap to a known call when only one fits (W6U -> W6UXD, "five K G X" -> KE5KGX).
 - Traffic, short-time and recheck flags from speech.
 - Name and license class lookup from callook.info for US calls.
