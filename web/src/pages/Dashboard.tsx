@@ -26,7 +26,17 @@ const FLAGS = [
 
 const flagsOf = (c: Checkin) => (c.flags || "").split(",").filter(Boolean);
 const spell = (call: string) => call.split("").join(" ");
-const timeOf = (ts: number) => new Date(ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+// "Today 2:04 PM", "Yesterday 7:12 PM", "Mon, Nov 2, 7:12 PM", or with the year once it's older
+export function stamp(ts: number, now = new Date()) {
+  const d = new Date(ts * 1000);
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (days === 0) return `Today ${time}`;
+  if (days === 1) return `Yesterday ${time}`;
+  const opts: Intl.DateTimeFormatOptions = days < 7 ? { weekday: "short", month: "short", day: "numeric" }
+    : d.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" };
+  return `${d.toLocaleDateString([], opts)}, ${time}`;
+}
 
 // Below Tailwind's md breakpoint, check-ins show as cards with big tap targets
 function useIsPhone() {
@@ -269,7 +279,7 @@ export function Dashboard({ admin }: { admin: boolean }) {
                   return (
                     <li key={`${h.ts}-${i}`} className="flex flex-col gap-1 py-2">
                       <span>
-                        <span className="font-medium">{timeOf(h.ts)}</span>{" "}
+                        <time dateTime={new Date(h.ts * 1000).toISOString()} className="font-medium whitespace-nowrap">{stamp(h.ts)}</time>{" "}
                         <span className="text-muted-foreground">{h.text}</span>
                       </span>
                       {missing.length > 0 && (

@@ -19,7 +19,7 @@ First public release.
 - Name and license class lookup from callook.info for US calls.
 
 ### Dashboard
-- Live roster, recheck list, last heard (with one-tap Add for calls not on the roster), manual add, fix call, CSV export.
+- Live roster, recheck list, last heard with day and time ("Today 2:04 PM", "Yesterday 7:12 PM") and one-tap Add for calls not on the roster, manual add, fix call, CSV export.
 - Node control over AMI: connect (monitor only), disconnect, list links, optional auto-connect.
 - Scheduled nets: weekly, monthly or one time. Opens the net, links the node, closes on time and unlinks. The Dashboard shows the next one.
 - Nets page: every past net with roster, searchable transcript, CSV and transcript downloads.
