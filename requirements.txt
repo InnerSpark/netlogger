@@ -1,3 +1,5 @@
 numpy
 faster-whisper
 tzdata
+httpx[http2]
+cryptography

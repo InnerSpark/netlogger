@@ -9,7 +9,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler
 
-from . import __version__, ami, audio, auth, config, db, license, netlog, schedule
+from . import __version__, ami, audio, auth, config, db, license, netlog, push, schedule
 from .parser import extract_calls, is_us
 
 SECURITY_HEADERS = {
@@ -315,14 +315,17 @@ def net_open(h):
     b = h.json_body()
     if not netlog.open_net():
         name = (b.get("name") or "").strip()[:80] or time.strftime("Net %Y-%m-%d")
-        db.insert("INSERT INTO nets (name, opened) VALUES (?,?)", (name, time.time()))
+        push.net_opened(db.insert("INSERT INTO nets (name, opened) VALUES (?,?)", (name, time.time())))
     h.send(200, {})
 
 
 def net_close(h):
     h.user()
     h.json_body()
+    net = netlog.open_net()
     db.q("UPDATE nets SET closed=? WHERE closed IS NULL", (time.time(),))
+    if net:
+        push.net_closed(net["id"])
     h.send(200, {})
 
 
@@ -348,6 +351,7 @@ def checkin_update(h, cid):
     need(row, 404, "That check-in is gone.")
     if b.get("delete"):
         db.q("DELETE FROM checkins WHERE id=?", (cid,))
+        push.net_changed(row["net_id"])
         return h.send(200, {})
     if "call" in b:
         calls = extract_calls(str(b["call"]).upper())
@@ -362,6 +366,7 @@ def checkin_update(h, cid):
         db.q("UPDATE checkins SET flags=? WHERE id=?", (",".join(sorted(flags)), cid))
     if "recheck_done" in b:
         db.q("UPDATE checkins SET recheck_done=? WHERE id=?", (1 if b["recheck_done"] else 0, cid))
+    push.net_changed(row["net_id"])
     h.send(200, {})
 
 
@@ -487,6 +492,35 @@ def node_action(h, action):
     h.send(200, {})
 
 
+# ---------- iOS app: push devices ----------
+TOKEN_RE = re.compile(r"[0-9a-fA-F]{32,200}")
+
+
+def push_status(h):
+    h.user()
+    h.send(200, {"enabled": push.enabled(), "prefs": list(push.PREFS)})
+
+
+def device_register(h):
+    u = h.user()
+    b = h.json_body()
+    token = str(b.get("token", ""))
+    need(TOKEN_RE.fullmatch(token), 400, "That isn't a device token.")
+    need(b.get("kind") in ("alert", "start", "activity"), 400, "kind is alert, start or activity.")
+    need(b.get("env") in ("production", "sandbox"), 400, "env is production or sandbox.")
+    net_id = b.get("net_id")
+    need(b["kind"] != "activity" or isinstance(net_id, int), 400, "An activity token needs its net_id.")
+    push.register(u["id"], token.lower(), b["kind"], b["env"], net_id, b.get("prefs"))
+    h.send(200, {"enabled": push.enabled()})
+
+
+def device_remove(h):
+    u = h.user()
+    b = h.json_body()
+    db.q("DELETE FROM devices WHERE token=? AND user_id=?", (str(b.get("token", "")).lower(), u["id"]))
+    h.send(200, {})
+
+
 # ---------- stats ----------
 def _median(xs):
     xs = sorted(xs)
@@ -592,6 +626,9 @@ ROUTES = [
     ("GET", r"/api/export\.csv", export_csv),
     ("GET", r"/api/nets", nets_list),
     ("GET", r"/api/stats", stats),
+    ("GET", r"/api/push", push_status),
+    ("POST", r"/api/devices", device_register),
+    ("POST", r"/api/devices/remove", device_remove),
     ("GET", r"/api/nets/(\d+)", net_detail),
     ("GET", r"/api/nets/(\d+)/transcript\.txt", net_transcript),
     ("GET", r"/api/schedules", schedules_list),

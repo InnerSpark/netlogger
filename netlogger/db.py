@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS schedules (
   weekday INTEGER, week_of_month INTEGER, date TEXT, start TEXT NOT NULL, duration_min INTEGER NOT NULL,
   node TEXT, disconnect_after INTEGER NOT NULL DEFAULT 1, tz TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1,
   last_run REAL, created_by TEXT);
+CREATE TABLE IF NOT EXISTS devices (
+  id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE, kind TEXT NOT NULL CHECK (kind IN ('alert','start','activity')),
+  env TEXT NOT NULL CHECK (env IN ('production','sandbox')), net_id INTEGER, prefs TEXT, updated REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created REAL NOT NULL, expires REAL NOT NULL);
