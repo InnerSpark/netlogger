@@ -4,7 +4,7 @@ import time
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from . import ami, config, db
+from . import ami, config, db, push
 
 REPEATS = ("weekly", "monthly", "once")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -93,6 +93,7 @@ def tick(now=None):
         ends = open_net["opened"] + (s["duration_min"] if s else 60) * 60
         if now.timestamp() >= ends:
             db.q("UPDATE nets SET closed=? WHERE id=?", (now.timestamp(), open_net["id"]))
+            push.net_closed(open_net["id"])
             print(f"schedule: closed {open_net['name']!r}", flush=True)
             if s and s["node"] and s["disconnect_after"] and config.NODE_CONTROL:
                 try:
@@ -112,8 +113,8 @@ def tick(now=None):
             continue
         name = f"{s['name']} {current.strftime('%Y-%m-%d')}"
         # Record the scheduled start, so a logger restarted mid-net still closes on time
-        db.insert("INSERT INTO nets (name, opened, schedule_id) VALUES (?,?,?)",
-                  (name, current.timestamp(), s["id"]))
+        push.net_opened(db.insert("INSERT INTO nets (name, opened, schedule_id) VALUES (?,?,?)",
+                                  (name, current.timestamp(), s["id"])))
         db.q("UPDATE schedules SET last_run=? WHERE id=?", (current.timestamp(), s["id"]))
         print(f"schedule: opened {name!r}", flush=True)
         open_net = True

@@ -52,5 +52,15 @@ COOKIE_SECURE = _bool("COOKIE_SECURE", False)  # set when serving over HTTPS
 SESSION_DAYS = _int("SESSION_DAYS", 30)
 
 NODE_CONTROL = bool(AMI_HOST and AMI_USER and AMI_SECRET)
+
+# Push notifications and Live Activities for the iOS app (Apple Push Notification service).
+# Off unless all four are set. The key is a .p8 from Apple Developer > Keys, with APNs enabled.
+APNS_KEY_FILE = os.environ.get("APNS_KEY_FILE", "").strip()
+APNS_KEY_ID = os.environ.get("APNS_KEY_ID", "").strip()
+APNS_TEAM_ID = os.environ.get("APNS_TEAM_ID", "").strip()
+APNS_TOPIC = os.environ.get("APNS_TOPIC", "").strip()  # the app's bundle ID
+PUSH = bool(APNS_KEY_FILE and APNS_KEY_ID and APNS_TEAM_ID and APNS_TOPIC)
+# During an open net, warn after this many minutes with no audio from AllStar (0 = never)
+AUDIO_ALERT_MIN = _int("AUDIO_ALERT_MIN", 5)
 # Running on the AllStar server itself (install.sh)
 SAME_HOST = AMI_HOST in ("127.0.0.1", "localhost", "::1")

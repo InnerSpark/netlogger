@@ -125,6 +125,10 @@ docker compose exec netlogger python -m netlogger reset-password W6ABC  # Docker
 
 Use a username or a callsign. Log in with the new password, then change it under **Change password**.
 
+## Push notifications (optional)
+
+The logger can send Apple push notifications and Live Activity updates to a companion iOS app: net open, first-time check-ins, no audio for a few minutes during a net, and a Lock Screen card with the check-in count. It's off unless you set the four `APNS_*` settings (see `.env.example`): an APNs key (`.p8`) from your Apple Developer account, its key ID, your team ID, and the app's bundle ID. The key stays on your server. Nothing is sent to Apple when they're blank.
+
 ## Backups
 
 Every net, check-in, transcript and account lives in one SQLite file: `/var/lib/netlogger/netlog.db` (install.sh) or `/data/netlog.db` in the Docker volume.
