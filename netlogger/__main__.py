@@ -56,6 +56,8 @@ def backup(path=None):
 def main():
     db.connect()
     print(f"Net Logger {__version__}", flush=True)
+    if auth.ensure_setup_code():
+        print(f"No accounts yet. Setup code: {auth.setup_code}", flush=True)
     threading.Thread(target=audio.transcriber, daemon=True).start()
     threading.Thread(target=audio.listener, daemon=True).start()
     schedule.start()

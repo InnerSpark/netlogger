@@ -282,6 +282,8 @@ if [ ! -f "$ENV_FILE" ]; then
 DATA_DIR=$DATA_DIR
 HTTP_HOST=127.0.0.1
 HTTP_PORT=8080
+# Audio from Asterisk on this machine only
+USRP_HOST=127.0.0.1
 USRP_PORT=34001
 WHISPER_MODEL=$MODEL
 WHISPER_THREADS=$THREADS
@@ -310,6 +312,11 @@ EOF
   ok "wrote $ENV_FILE (model $MODEL, $THREADS threads)"
 else
   ok "kept existing $ENV_FILE"
+  # Upgrades from before 1.0: audio only from this machine (Asterisk sends it over loopback)
+  if ! grep -qE '^USRP_HOST=' "$ENV_FILE"; then
+    printf '\n# Audio from Asterisk on this machine only\nUSRP_HOST=127.0.0.1\n' >> "$ENV_FILE"
+    ok "audio port now listens on this machine only (USRP_HOST=127.0.0.1)"
+  fi
 fi
 chown root:netlogger "$ENV_FILE"
 chmod 640 "$ENV_FILE"
@@ -367,14 +374,16 @@ if asterisk -rx "module show like usrp" 2>/dev/null | grep -q chan_usrp; then ok
 if asterisk -rx "rpt localnodes" 2>/dev/null | grep -qw "$LOGGER_NODE"; then ok "node $LOGGER_NODE is up"; else warn "node $LOGGER_NODE not up yet (restart Asterisk)"; fi
 if curl -fsS -o /dev/null http://127.0.0.1:8080/api/auth/status; then ok "dashboard answering on 127.0.0.1:8080"; else warn "dashboard not answering yet: journalctl -u netlogger -f"; fi
 
+SETUP_LINE="$(journalctl -u netlogger --since "-5 min" --no-pager 2>/dev/null | grep -o 'Setup code: [0-9a-f]*' | tail -1 || true)"
+
 cat <<EOF
 
 Done.
 
 Next:
   1. Put the dashboard on a subdomain with HTTPS: docs/same-server.md, step 6.
-  2. Open it and create the admin account right away.
-  3. The Setup page shows a live status check.
+  2. Open it and create the admin account. ${SETUP_LINE:-You'll need the setup code from: journalctl -u netlogger | grep 'Setup code'}
+  3. The Health page shows a live status check.
 
 Logs:       journalctl -u netlogger -f
 Settings:   $ENV_FILE

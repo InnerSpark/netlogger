@@ -42,6 +42,24 @@ def username_problem(name: str):
     return None
 
 
+# ---------- first-run setup ----------
+setup_lock = threading.Lock()
+setup_code = ""  # set at startup when there are no accounts yet
+
+
+def ensure_setup_code():
+    """A fresh install needs a code from the server's own log or config to create the first admin,
+    so whoever finds the dashboard first can't claim it."""
+    global setup_code
+    if user_count() == 0:
+        setup_code = config.SETUP_CODE or secrets.token_hex(4)
+    return setup_code
+
+
+def setup_code_ok(code):
+    return bool(setup_code) and hmac.compare_digest(str(code or "").strip().lower(), setup_code.lower())
+
+
 # ---------- users ----------
 def license_ok(u):
     return (not config.REQUIRE_LICENSE) or bool(u.get("callsign") and u.get("verified_by"))
@@ -140,12 +158,12 @@ def throttled(key):
     return max(0, int(until - time.time()))
 
 
-def record_fail(key):
+def record_fail(key, free=5):
     with _fails_lock:
         n, _ = _fails.get(key, (0, 0))
         n += 1
-        # 5 free tries, then 30s, 60s, 120s... capped at 15 min
-        wait = 0 if n < 5 else min(30 * 2 ** (n - 5), 900)
+        # `free` tries, then 30s, 60s, 120s... capped at 15 min
+        wait = 0 if n < free else min(30 * 2 ** (n - free), 900)
         _fails[key] = (n, time.time() + wait)
 
 

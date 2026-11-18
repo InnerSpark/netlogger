@@ -146,9 +146,10 @@ def transcriber():
 
 def listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", config.USRP_PORT))
+    sock.bind((config.USRP_HOST, config.USRP_PORT))
     sock.settimeout(0.5)
-    print(f"listening for USRP audio on udp/{config.USRP_PORT}", flush=True)
+    print(f"listening for USRP audio on udp {config.USRP_HOST}:{config.USRP_PORT}"
+          + (f", from {', '.join(sorted(config.USRP_ALLOW))} only" if config.USRP_ALLOW else ""), flush=True)
     buf = []
 
     def flush():
@@ -160,10 +161,12 @@ def listener():
 
     while True:
         try:
-            data = sock.recv(2048)
+            data, (addr, _) = sock.recvfrom(2048)
         except socket.timeout:
             flush()  # link dropped mid-transmission
             continue
+        if config.USRP_ALLOW and addr not in config.USRP_ALLOW:
+            continue  # not our AllStar server: drop it, so nobody else can feed in fake check-ins
         if len(data) < USRP_HDR.size or data[:4] != b"USRP":
             continue
         status["last_packet"] = time.time()

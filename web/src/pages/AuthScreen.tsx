@@ -11,9 +11,11 @@ export function AuthScreen({ mode, onDone, requireLicense = true }: { mode: "set
   const [username, setUsername] = useState("");
   const [callsign, setCallsign] = useState("");
   const callRef = useRef<HTMLInputElement>(null);
+  const [code, setCode] = useState("");
+  const codeRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [errField, setErrField] = useState<"username" | "password" | "callsign" | null>(null);
+  const [errField, setErrField] = useState<"username" | "password" | "callsign" | "code" | null>(null);
   const [busy, setBusy] = useState(false);
   const userRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
@@ -21,17 +23,21 @@ export function AuthScreen({ mode, onDone, requireLicense = true }: { mode: "set
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (setup && !code.trim()) { setError("Enter the setup code."); setErrField("code"); codeRef.current?.focus(); return; }
     if (setup && requireLicense && !callsign.trim()) { setError("Enter your callsign."); setErrField("callsign"); callRef.current?.focus(); return; }
     if (!setup && !username.trim()) { setError("Enter a username."); setErrField("username"); userRef.current?.focus(); return; }
     if (!password) { setError("Enter a password."); setErrField("password"); passRef.current?.focus(); return; }
     setBusy(true);
     try {
-      await post(setup ? "/api/auth/setup" : "/api/auth/login", setup ? { username, password, callsign } : { username, password });
+      await post(setup ? "/api/auth/setup" : "/api/auth/login", setup ? { username, password, callsign, setup_code: code } : { username, password });
       onDone();
     } catch (err) {
       const msg = (err as Error).message;
       setError(msg);
-      if (setup && !msg.startsWith("Username") && !msg.startsWith("Password") && !msg.startsWith("Can't reach")) {
+      if (setup && (msg.startsWith("Wrong setup code") || msg.startsWith("Too many"))) {
+        setErrField("code");
+        codeRef.current?.focus();
+      } else if (setup && !msg.startsWith("Username") && !msg.startsWith("Password") && !msg.startsWith("Can't reach")) {
         setErrField("callsign");
         callRef.current?.focus();
       } else if (msg.startsWith("Username")) {
@@ -67,10 +73,21 @@ export function AuthScreen({ mode, onDone, requireLicense = true }: { mode: "set
           <form onSubmit={submit} noValidate className="flex flex-col gap-4">
             {setup && (
               <div className="flex flex-col gap-2">
+                <Label htmlFor="setup-code">Setup code</Label>
+                <Input ref={codeRef} id="setup-code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false}
+                  value={code} onChange={(e) => setCode(e.target.value)} className="font-mono max-md:h-11"
+                  aria-invalid={errField === "code" || undefined} aria-describedby="code-hint auth-error" autoFocus />
+                <p id="code-hint" className="text-muted-foreground text-sm">
+                  The installer prints it, or run <code className="font-mono">journalctl -u netlogger | grep "Setup code"</code> on the server (Docker: <code className="font-mono">docker compose logs netlogger</code>).
+                </p>
+              </div>
+            )}
+            {setup && (
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="callsign">Callsign{!requireLicense && " (optional)"}</Label>
                 <Input ref={callRef} id="callsign" autoComplete="off" autoCapitalize="characters" spellCheck={false}
                   value={callsign} onChange={(e) => setCallsign(e.target.value)} className="font-mono uppercase max-md:h-11"
-                  aria-invalid={errField === "callsign" || undefined} aria-describedby="auth-error" autoFocus />
+                  aria-invalid={errField === "callsign" || undefined} aria-describedby="auth-error" />
               </div>
             )}
             <div className="flex flex-col gap-2">

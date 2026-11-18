@@ -44,6 +44,7 @@ telemdefault = 0
 ```
 
 - `rxchannel` sends the node's audio to Net Logger (UDP 34001). Net Logger never sends audio back.
+- On the Net Logger side, set `USRP_ALLOW` in `.env` to the AllStar server's address as Net Logger sees it (for example its VPN address), so audio from anywhere else is dropped.
 - `telemdefault = 0` keeps telemetry quiet on this node.
 
 In the `[nodes]` section of the same file, add:

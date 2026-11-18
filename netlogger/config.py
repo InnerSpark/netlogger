@@ -18,6 +18,11 @@ WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parent.parent 
 HTTP_HOST = os.environ.get("HTTP_HOST", "0.0.0.0")
 HTTP_PORT = _int("HTTP_PORT", 8080)
 USRP_PORT = _int("USRP_PORT", 34001)
+# Where to listen for audio. install.sh sets 127.0.0.1 (Asterisk is on the same machine).
+# Docker needs 0.0.0.0 inside the container; then set USRP_ALLOW or firewall the port.
+USRP_HOST = os.environ.get("USRP_HOST", "0.0.0.0").strip()
+# Only take audio from these addresses (comma separated). Blank = from anywhere that can reach the port.
+USRP_ALLOW = {a.strip() for a in os.environ.get("USRP_ALLOW", "").split(",") if a.strip()}
 
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small.en")
 WHISPER_THREADS = _int("WHISPER_THREADS", 0)  # 0 = all cores; cap it on a shared server
@@ -50,6 +55,8 @@ REQUIRE_LICENSE = _bool("REQUIRE_LICENSE", True)
 LICENSE_RECHECK_DAYS = _int("LICENSE_RECHECK_DAYS", 30)
 COOKIE_SECURE = _bool("COOKIE_SECURE", False)  # set when serving over HTTPS
 SESSION_DAYS = _int("SESSION_DAYS", 30)
+# Code needed to create the first admin. Blank: a random one is printed to the log at startup.
+SETUP_CODE = os.environ.get("SETUP_CODE", "").strip()
 
 NODE_CONTROL = bool(AMI_HOST and AMI_USER and AMI_SECRET)
 

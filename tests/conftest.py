@@ -11,6 +11,9 @@ from netlogger import auth, config, db
 from netlogger.web import Handler
 
 
+SETUP_CODE = "c0ffee42"
+
+
 class FakeAMI(socketserver.ThreadingTCPServer):
     """Speaks just enough AMI: Login, Command (rpt lstats / rpt cmd ilink), Logoff."""
     allow_reuse_address = True
@@ -124,6 +127,8 @@ def server(tmp_path, monkeypatch):
     (tmp_path / "index.html").write_text("<!doctype html><title>t</title>")
     db.connect(tmp_path / "t.db")
     auth._fails.clear()
+    monkeypatch.setattr(config, "SETUP_CODE", SETUP_CODE)
+    auth.ensure_setup_code()
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -137,6 +142,8 @@ class Client:
         self.base, self.cookie = base, None
 
     def req(self, method, path, body=None, ctype="application/json"):
+        if path == "/api/auth/setup":  # the real setup code, unless a test sends its own
+            body = {"setup_code": SETUP_CODE, **(body or {})}
         data = json.dumps(body or {}).encode() if method == "POST" else None
         r = urllib.request.Request(self.base + path, data=data, method=method)
         if data is not None:

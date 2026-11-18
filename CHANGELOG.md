@@ -4,6 +4,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Security (first pen test, 2026-11-18)
+- Audio port: `USRP_HOST` (install.sh listens on 127.0.0.1, also on upgrade) and a `USRP_ALLOW` source list, so nobody else can feed in audio.
+- First admin needs a setup code from the server log; guesses are throttled; only one first admin.
+- Sign-in limits per account as well as per IP, so a faked client address can't get around them. Failed sign-ins are logged.
+- Bad or negative request sizes get a 400 instead of tying up the server; very large ids get a 404 instead of a 500.
+- CSV export quotes cells that a spreadsheet would run as formulas.
+- Attack suite (`tests/test_pentest.py`), release gate (`scripts/release-check.sh`), secret scan, and a read-only live check (`scripts/pentest-live.sh`).
+
+### Docs
+- Product docs in `docs/`: brief, architecture, security, pen testing and the first report, design, accessibility audit, privacy, licensing, roadmap, feedback log, decision records, release runbook, support, brand, go-to-market.
+
 ## [1.0.0] - not yet released
 
 First public release.

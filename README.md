@@ -45,6 +45,7 @@ Net control's browser ───────────────────�
 cd /opt && sudo git clone https://github.com/InnerSpark/netlogger.git
 cd netlogger && sudo ./install.sh
 ```
+The installer ends by printing a **setup code**. You'll need it to create the admin account.
 
 **B. On another computer with Docker.** A Mac, Linux box, or Pi that gets audio from your AllStar server over the network. See the quick start below and **[docs/allstar-setup.md](docs/allstar-setup.md)**.
 
@@ -70,7 +71,7 @@ Either way you need an **AllStar node you control**. Anyone licensed can get a n
    docker compose up -d --build
    ```
    The first start downloads the Whisper model (about 500 MB for `small.en`).
-4. **Open `http://<this-computer>:8080`** and create the admin account.
+4. **Open `http://<this-computer>:8080`** and create the admin account. It asks for the **setup code** from the log: `docker compose logs netlogger | grep "Setup code"`. This stops anyone else on your network from claiming the logger first.
 5. **Follow the Health page.** After you create the admin account, the app opens a **Health** page (admins only) with a live health check and a setup guide and step-by-step AllStar instructions, with your node number, ports, and addresses already filled in and a Copy button on every snippet. The same steps are in [docs/allstar-setup.md](docs/allstar-setup.md).
 
 Useful commands:
@@ -143,6 +144,9 @@ Every net, check-in, transcript and account lives in one SQLite file: `/var/lib/
 
 - **Only put the dashboard on the internet behind HTTPS.** The installer sets this up for a subdomain (see [docs/same-server.md](docs/same-server.md)). With Docker, keep it on your LAN or VPN, or put it behind a reverse proxy with HTTPS and set `COOKIE_SECURE=1` and `TRUST_PROXY=1`.
 - The AMI account only needs `command` rights. Limit it to the logger's address in `manager.conf`.
+- **Audio port (UDP 34001):** install.sh listens on 127.0.0.1 only. With Docker, set `USRP_ALLOW` to your AllStar server's address (or firewall the port) so nobody else can send audio in.
+- **Behind Cloudflare or another proxy:** let only the proxy reach your server's web ports, or use a tunnel. Sign-in limits also apply per account, so faking the visitor address doesn't get around them.
+- **Pen testing:** every release passes an attack suite and a pen test report. See [docs/pentest.md](docs/pentest.md). Check your own install with `scripts/pentest-live.sh your.host` (read-only).
 - Report security issues privately: see [SECURITY.md](SECURITY.md).
 
 ## Settings

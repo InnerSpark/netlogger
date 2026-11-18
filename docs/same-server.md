@@ -127,7 +127,7 @@ netlog.example.com {
 
 ## 3. First login
 
-Open `https://netlog.example.com` and **create the admin account right away**. Until you do, anyone who finds the page could. Use a strong password: the login page is on the public internet.
+Open `https://netlog.example.com` and **create the admin account**. It asks for the **setup code** the installer printed (or run `sudo journalctl -u netlogger | grep "Setup code"`), so nobody else can claim the logger first. Use a strong password: the login page is on the public internet.
 
 Logins only work over HTTPS in this setup (`COOKIE_SECURE=1`). To try it before the subdomain is ready, use an SSH tunnel: `ssh -L 8080:127.0.0.1:8080 you@server`, then open `http://localhost:8080`.
 

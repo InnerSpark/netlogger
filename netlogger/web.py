@@ -72,7 +72,11 @@ class Handler(BaseHTTPRequestHandler):
     def json_body(self):
         # JSON-only POSTs: a cross-site form can't send this without a CORS preflight, which we never allow
         need(self.headers.get("Content-Type", "").split(";")[0].strip() == "application/json", 415, "Send JSON.")
-        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise HTTPError(400, "Bad Content-Length.")
+        need(n >= 0, 400, "Bad Content-Length.")  # a negative length would read until the client hangs up
         need(n <= 64 * 1024, 413, "Request too large.")
         try:
             return json.loads(self.rfile.read(n) or b"{}")
@@ -128,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
 
 # ---------- auth ----------
 def auth_status(h):
-    return h.send(200, {"setup_needed": auth.user_count() == 0,
+    return h.send(200, {"setup_needed": auth.user_count() == 0, "setup_code_required": True,
                         "require_license": config.REQUIRE_LICENSE,
                         "user": auth.public(auth.session_user(h.token()))})
 
@@ -146,6 +150,12 @@ def check_license(call):
 def auth_setup(h):
     b = h.json_body()
     need(auth.user_count() == 0, 409, "Setup is already done. Log in instead.")
+    wait = max(auth.throttled(h.client()), auth.throttled("setup"))
+    need(not wait, 429, f"Too many tries. Wait {wait} seconds.")
+    if not auth.setup_code_ok(b.get("setup_code")):
+        auth.record_fail(h.client())
+        auth.record_fail("setup", free=20)
+        raise HTTPError(403, "Wrong setup code. It's in the logger's log, on the line that starts \"Setup code\".")
     call = license.normalize(b.get("callsign"))
     username = (b.get("username") or "").strip() or call.lower()
     if config.REQUIRE_LICENSE:
@@ -159,7 +169,10 @@ def auth_setup(h):
         result, verified_by = {"call": call}, "self"
     elif config.REQUIRE_LICENSE:
         result, verified_by = check_license(call), "callook"
-    uid = auth.create_user(username, b["password"], "admin")
+    with auth.setup_lock:  # two setups at once: only the first one wins
+        need(auth.user_count() == 0, 409, "Setup is already done. Log in instead.")
+        uid = auth.create_user(username, b["password"], "admin")
+        auth.setup_code = ""
     if result:
         auth.save_license(uid, result, verified_by)
     token = auth.new_session(uid)
@@ -169,13 +182,20 @@ def auth_setup(h):
 
 def auth_login(h):
     b = h.json_body()
-    wait = auth.throttled(h.client())
+    # Throttle per client IP and per account: the IP alone can be faked by anyone who reaches
+    # the server without going through the proxy, so the account limit is the backstop.
+    keys = [h.client(), "user:" + str(b.get("username") or "").strip().lower()]
+    wait = max(auth.throttled(k) for k in keys)
     need(not wait, 429, f"Too many tries. Wait {wait} seconds.")
     u = auth.login(b.get("username"), b.get("password"))
     if not u:
-        auth.record_fail(h.client())
+        auth.record_fail(keys[0])
+        auth.record_fail(keys[1], free=10)
+        name = re.sub(r"[^\w.@-]", "?", str(b.get("username") or ""))[:40]  # no log injection
+        print(f"failed sign-in for {name!r} from {keys[0]}", flush=True)
         raise HTTPError(401, "Wrong username or password.")
-    auth.record_ok(h.client())
+    for k in keys:
+        auth.record_ok(k)
     if config.REQUIRE_LICENSE and license.stale(u):
         # Periodic re-check. If the lookup is down, let them in and try next time.
         try:
@@ -288,12 +308,18 @@ def state(h):
 
 def net_from_query(h):
     """?net=<id> picks a past net; otherwise the open or most recent one."""
-    m = re.search(r"[?&]net=(\d+)", h.path)
+    m = re.search(r"[?&]net=(\d{1,9})", h.path)
     if m:
         net = db.q("SELECT * FROM nets WHERE id=?", (int(m.group(1)),), one=True)
         need(net, 404, "No such net.")
         return net
     return netlog.current_or_last_net()
+
+
+def _cell(v):
+    """Spreadsheets run cells that start with = + - @ as formulas. Quote them so they stay text."""
+    v = "" if v is None else str(v)
+    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
 
 
 def export_csv(h):
@@ -304,8 +330,9 @@ def export_csv(h):
     w.writerow(["#", "time", "call", "name", "location", "class", "flags", "first_time"])
     rows = db.q("SELECT * FROM checkins WHERE net_id=? ORDER BY ts", (net["id"] if net else -1,))
     for i, r in enumerate(rows, 1):
-        w.writerow([i, time.strftime("%Y-%m-%d %H:%M", time.localtime(r["ts"])), r["call"], r["name"],
-                    r["location"], r["class"], r["flags"], "yes" if r["first_time"] else ""])
+        w.writerow([i, time.strftime("%Y-%m-%d %H:%M", time.localtime(r["ts"]))] +
+                   [_cell(r[k]) for k in ("call", "name", "location", "class", "flags")] +
+                   ["yes" if r["first_time"] else ""])
     name = re.sub(r"[^A-Za-z0-9_-]+", "_", net["name"] if net else "net")
     h.send(200, out.getvalue(), "text/csv", {"Content-Disposition": f'attachment; filename="{name}.csv"'})
 
@@ -550,9 +577,9 @@ def stats(h):
     ?days=90 (0 = all time) and ?schedule=<id> (omit for every net).
     """
     h.user()
-    m = re.search(r"[?&]days=(\d+)", h.path)
+    m = re.search(r"[?&]days=(\d{1,9})", h.path)
     days = int(m.group(1)) if m else 90
-    m = re.search(r"[?&]schedule=(\d+)", h.path)
+    m = re.search(r"[?&]schedule=(\d{1,9})", h.path)
     sid = int(m.group(1)) if m else None
     now = time.time()
     since = now - days * 86400 if days else 0
@@ -621,7 +648,7 @@ ROUTES = [
     ("POST", r"/api/me/license", me_license),
     ("GET", r"/api/users", users_list),
     ("POST", r"/api/users", users_create),
-    ("POST", r"/api/users/(\d+)", users_update),
+    ("POST", r"/api/users/(\d{1,9})", users_update),
     ("GET", r"/api/state", state),
     ("GET", r"/api/export\.csv", export_csv),
     ("GET", r"/api/nets", nets_list),
@@ -629,15 +656,15 @@ ROUTES = [
     ("GET", r"/api/push", push_status),
     ("POST", r"/api/devices", device_register),
     ("POST", r"/api/devices/remove", device_remove),
-    ("GET", r"/api/nets/(\d+)", net_detail),
-    ("GET", r"/api/nets/(\d+)/transcript\.txt", net_transcript),
+    ("GET", r"/api/nets/(\d{1,9})", net_detail),
+    ("GET", r"/api/nets/(\d{1,9})/transcript\.txt", net_transcript),
     ("GET", r"/api/schedules", schedules_list),
     ("POST", r"/api/schedules", schedule_create),
-    ("POST", r"/api/schedules/(\d+)", schedule_update),
+    ("POST", r"/api/schedules/(\d{1,9})", schedule_update),
     ("POST", r"/api/net/open", net_open),
     ("POST", r"/api/net/close", net_close),
     ("POST", r"/api/checkin", checkin_add),
-    ("POST", r"/api/checkin/(\d+)", checkin_update),
+    ("POST", r"/api/checkin/(\d{1,9})", checkin_update),
     ("GET", r"/api/nodes", nodes),
     ("GET", r"/api/setup", setup_status),
     ("POST", r"/api/nodes/(connect|disconnect)", node_action),
